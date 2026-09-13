@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.uv/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Ruff cache
+.ruff_cache/
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Per-machine runtime state
+state/
+*.sidecar.json
+
+# Secrets — never commit
+.env
+*.env.local
+credentials.json

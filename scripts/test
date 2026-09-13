@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# scripts/test — run pytest (must exit 0 at birth — fresh-repo contract)
+set -euo pipefail
+uv run --with pytest pytest -q "$@"

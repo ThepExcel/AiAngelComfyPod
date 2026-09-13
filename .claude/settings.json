@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(scripts/*)",
+      "Bash(uv run:*)"
+    ]
+  }
+}

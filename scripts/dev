@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# scripts/dev — run the tool entry point
+set -euo pipefail
+uv run --with . python -m aiangelcomfypod "$@"

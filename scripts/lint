@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# scripts/lint — ruff check + format check
+set -euo pipefail
+uv run --with ruff ruff check .
+uv run --with ruff ruff format --check .
