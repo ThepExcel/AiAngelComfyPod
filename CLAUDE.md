@@ -16,6 +16,14 @@ scripts/test    # uv run pytest -q
 scripts/lint    # uv run ruff check . && uv run ruff format --check .
 ```
 
+## Template layout
+
+- `Dockerfile` — FROM `runpod/comfyui` pinned by digest; ComfyUI runs from `/opt/comfyui` in the image, user data under `$DATA_DIR` (`/workspace/aiangel`) via symlinks.
+- `docker/start.sh` (entrypoint) · `docker/download_models.sh` (presets by `MODELS=`) · `presets/models.tsv` (preset, subdir, file, bytes, HF URL).
+- `.github/workflows/build.yml` builds and pushes `ghcr.io/thepexcel/aiangelcomfypod` on push to main. No local docker on SiraPC — CI is the only build.
+- Public repo: never add keys, our own LoRAs, workflows, prompts, outputs or anything NSFW (`tests/test_template.py` guards tokens and local paths).
+- Paid pod/volume actions (tooling lives in `D:/ClaudeMediaGen/scripts/runpod/rp_pod.py`) need the owner's yes per session.
+
 ## Architecture invariants
 
 1. All Thai text crosses subprocess/API boundaries via UTF-8 file, never argv or stdin (cp874 rule).
