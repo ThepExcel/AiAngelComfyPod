@@ -84,4 +84,6 @@ re-installed on each new container (cached on the volume, so it is quick).
 GitHub Actions builds and pushes the image on every change to `Dockerfile`, `docker/` or
 `presets/`. Model presets are plain Hugging Face links in `presets/models.tsv`.
 
-Models and bundled custom nodes keep their own licenses.
+## License
+
+MIT for this repository (see `LICENSE`). Models and bundled custom nodes keep their own licenses.
