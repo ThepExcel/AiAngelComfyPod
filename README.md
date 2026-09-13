@@ -26,8 +26,10 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
    | Variable | Example | Meaning |
    |---|---|---|
-   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `scail` ≈ 29 GB) |
-   | `HF_TOKEN` | *(your token)* | only needed for gated Hugging Face files |
+   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `scail` ≈ 29 GB, `krea2` ≈ 19 GB) |
+   | `EXTRA_MODELS` | *(links, see below)* | any other Civitai / Hugging Face models to download on boot |
+   | `CIVITAI_TOKEN` | *(your Civitai API key)* | needed for Civitai downloads; also fills Model Manager's key |
+   | `HF_TOKEN` | *(your token)* | only needed for gated Hugging Face files; also fills Model Manager's key |
    | `COMFYUI_ARGS` | `--fast-disk` | extra ComfyUI launch flags |
    | `FILEBROWSER_PASSWORD` | *(12+ chars)* | otherwise one is generated and printed in the pod log |
    | `JUPYTER_PASSWORD` | | otherwise one is generated and printed in the pod log |
@@ -55,7 +57,28 @@ The image includes [ComfyUI-Model-Manager](https://github.com/hayden-cn/ComfyUI-
    **Civitai API key** / **Hugging Face token** in ComfyUI **Settings → Model Manager**. Tokens are
    stored only on your volume (`custom_nodes/ComfyUI-Model-Manager/private.key`) and shown masked.
 
+Links from both `civitai.com` and `civitai.red` work. Files Civitai marks as *Diffusion Model*
+go to `diffusion_models` by default; you can still change the folder before downloading.
+
 Civicomfy is also installed if you prefer searching Civitai from inside ComfyUI.
+
+### Download your own list on every boot (`EXTRA_MODELS`)
+
+Put one entry per line (or separate with `;`). Keep the list in your own RunPod template or pod
+settings, and your Civitai key in a RunPod secret (`CIVITAI_TOKEN={{ RUNPOD_SECRET_civitai }}`).
+
+```
+https://civitai.com/models/12345/some-model?modelVersionId=67890
+loras|https://civitai.red/models/111/some-lora?modelVersionId=222
+diffusion_models|https://civitai.com/models/333?modelVersionId=444|int8
+https://huggingface.co/some-org/some-repo/resolve/main/file.safetensors
+```
+
+- `folder|link` sets the models folder (`checkpoints`, `loras`, `diffusion_models`, `vae`, ...).
+  Without it, Civitai's own label decides — some uploads label a UNet-only file as a checkpoint,
+  so set `diffusion_models|` for those.
+- `folder|link|text` picks the Civitai file whose name contains `text` when a version has several.
+- Files already on the volume at the right size are skipped. Progress is in `logs/models.log`.
 
 ## Where things are
 

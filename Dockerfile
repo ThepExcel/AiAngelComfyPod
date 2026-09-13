@@ -26,11 +26,14 @@ RUN apt-get update \
 # copy that start.sh syncs onto the volume.
 RUN mv /opt/comfyui-baked /opt/comfyui
 
+COPY docker/patch_model_manager.py /opt/aiangel/patch_model_manager.py
 RUN curl -fSL "https://github.com/hayden-cn/ComfyUI-Model-Manager/releases/download/${MODEL_MANAGER_VERSION}/dist.tar.gz" -o /tmp/mm.tar.gz \
     && echo "${MODEL_MANAGER_SHA256}  /tmp/mm.tar.gz" | sha256sum -c - \
     && mkdir -p /opt/comfyui/custom_nodes/ComfyUI-Model-Manager \
     && tar xzf /tmp/mm.tar.gz -C /opt/comfyui/custom_nodes/ComfyUI-Model-Manager \
     && rm /tmp/mm.tar.gz \
+    && python3.12 /opt/aiangel/patch_model_manager.py /opt/comfyui/custom_nodes/ComfyUI-Model-Manager/py/information.py \
+    && echo "MODEL_MANAGER_PATCH=civitai-hosts,diffusion-model-folder" >> /opt/comfyui/.runpod-bundle-version \
     && python3.12 -m pip install --no-cache-dir -c /opt/comfyui-runtime-constraints.txt \
         -r /opt/comfyui/custom_nodes/ComfyUI-Model-Manager/requirements.txt \
     && echo "MODEL_MANAGER_VERSION=${MODEL_MANAGER_VERSION}" >> /opt/comfyui/.runpod-bundle-version \
@@ -39,11 +42,13 @@ RUN curl -fSL "https://github.com/hayden-cn/ComfyUI-Model-Manager/releases/downl
 COPY presets/models.tsv /opt/aiangel/models.tsv
 COPY docker/start.sh /opt/aiangel/start.sh
 COPY docker/download_models.sh /opt/aiangel/download_models.sh
+COPY docker/fetch_extra.py docker/seed_model_manager_keys.py /opt/aiangel/
 RUN chmod +x /opt/aiangel/*.sh \
     && python3.12 -c "import torch, comfy_kitchen; print('torch', torch.__version__)"
 
 ENV DATA_DIR=/workspace/aiangel \
     MODELS="" \
+    EXTRA_MODELS="" \
     COMFYUI_ARGS=""
 
 WORKDIR /opt/comfyui

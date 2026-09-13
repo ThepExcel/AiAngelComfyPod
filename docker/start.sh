@@ -65,6 +65,8 @@ if ! cmp -s "$BUNDLE" "$DATA_DIR/custom_nodes/.aiangel-bundle-version"; then
 fi
 rm -rf "$COMFY/custom_nodes"
 ln -sfn "$DATA_DIR/custom_nodes" "$COMFY/custom_nodes"
+python3.12 /opt/aiangel/seed_model_manager_keys.py \
+    "$DATA_DIR/custom_nodes/ComfyUI-Model-Manager/private.key" || true
 
 # Python packages live in the image, so a user-installed node needs its requirements again on
 # every fresh container. The pip cache on the volume keeps that quick.
@@ -119,9 +121,12 @@ echo "  (stored in $SECRETS; set FILEBROWSER_PASSWORD / JUPYTER_PASSWORD to choo
 echo "================================================================"
 
 # ---- model presets download in the background; ComfyUI does not wait for them
-if [ -n "${MODELS:-}" ]; then
-    nohup /opt/aiangel/download_models.sh "$MODELS" > "$LOG_DIR/models.log" 2>&1 &
-    stamp "downloading presets '$MODELS' in background (log: $LOG_DIR/models.log)"
+if [ -n "${MODELS:-}" ] || [ -n "${EXTRA_MODELS:-}" ]; then
+    (
+        [ -n "${MODELS:-}" ] && /opt/aiangel/download_models.sh "$MODELS"
+        [ -n "${EXTRA_MODELS:-}" ] && python3.12 /opt/aiangel/fetch_extra.py
+    ) > "$LOG_DIR/models.log" 2>&1 &
+    stamp "downloading models in background (log: $LOG_DIR/models.log)"
 fi
 
 # ---- ComfyUI

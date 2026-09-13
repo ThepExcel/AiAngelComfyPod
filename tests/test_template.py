@@ -6,7 +6,11 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 PRESETS = ROOT / "presets" / "models.tsv"
-IMAGE_FILES = [ROOT / "Dockerfile", *sorted((ROOT / "docker").glob("*")), PRESETS]
+IMAGE_FILES = [
+    ROOT / "Dockerfile",
+    *sorted(p for p in (ROOT / "docker").iterdir() if p.is_file()),
+    PRESETS,
+]
 ALLOWED_HOSTS = {"huggingface.co"}
 KNOWN_SUBDIRS = {
     "checkpoints",

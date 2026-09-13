@@ -10,3 +10,6 @@ scail	text_encoders	umt5_xxl_fp8_e4m3fn_scaled.safetensors	6735906897	https://hu
 scail	vae	wan_2.1_vae.safetensors	253815318	https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors
 scail	clip_vision	clip_vision_h.safetensors	1264219396	https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors
 scail	checkpoints	sam3.1_multiplex_fp16.safetensors	1745546848	https://huggingface.co/Comfy-Org/sam3.1/resolve/main/checkpoints/sam3.1_multiplex_fp16.safetensors
+krea2	diffusion_models	krea2_turbo_int8_convrot.safetensors	13492686496	https://huggingface.co/Comfy-Org/Krea-2/resolve/main/diffusion_models/krea2_turbo_int8_convrot.safetensors
+krea2	text_encoders	qwen3vl_4b_fp8_scaled.safetensors	5242467968	https://huggingface.co/Comfy-Org/Krea-2/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors
+krea2	vae	qwen_image_vae.safetensors	253806246	https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors

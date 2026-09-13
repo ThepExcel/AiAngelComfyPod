@@ -21,7 +21,8 @@ scripts/lint    # uv run ruff check . && uv run ruff format --check .
 - `Dockerfile` — FROM `runpod/comfyui` pinned by digest; ComfyUI runs from `/opt/comfyui` in the image, user data under `$DATA_DIR` (`/workspace/aiangel`) via symlinks.
 - `docker/start.sh` (entrypoint) · `docker/download_models.sh` (presets by `MODELS=`) · `presets/models.tsv` (preset, subdir, file, bytes, HF URL).
 - `.github/workflows/build.yml` builds and pushes `ghcr.io/thepexcel/aiangelcomfypod` on push to main. No local docker on SiraPC — CI is the only build.
-- Public repo: never add keys, our own LoRAs, workflows, prompts, outputs or anything NSFW (`tests/test_template.py` guards tokens and local paths).
+- Public repo: never add keys, our own LoRAs, workflows, prompts, outputs or anything NSFW (`tests/test_template.py` guards tokens and local paths). NSFW checkpoints the owner wants on pods reach them through the generic `EXTRA_MODELS` env; the list itself lives in the private `D:/ClaudeMediaGen/scripts/runpod/private-extra-models.txt` (`rp_pod.py up --extra-models-file`).
+- ComfyUI-Model-Manager is patched at build (`docker/patch_model_manager.py`: civitai.red hosts, Diffusion Model → diffusion_models); a new upstream release must re-pass that patch.
 - Paid pod/volume actions (tooling lives in `D:/ClaudeMediaGen/scripts/runpod/rp_pod.py`) need the owner's yes per session.
 
 ## Architecture invariants
