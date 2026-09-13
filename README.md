@@ -47,12 +47,13 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
 The image includes [ComfyUI-Model-Manager](https://github.com/hayden-cn/ComfyUI-Model-Manager).
 
-1. In ComfyUI, open **Settings → Model Manager** and paste your own **Civitai API key** and/or
-   **Hugging Face token**. Tokens are stored only on your volume
-   (`custom_nodes/ComfyUI-Model-Manager/private.key`) and shown masked.
-2. Open the **Model Manager** button in the side bar → **Download** tab.
-3. Paste a model page link from `civitai.com` or `huggingface.co`, choose the folder
-   (`checkpoints`, `loras`, `vae`, …), and download.
+1. Click **Model Manager** in the top bar, then the download icon → **Create Download Task**.
+2. Paste a model page link from `civitai.com` or `huggingface.co` (or a direct `.safetensors`
+   link) and press the search icon. Pick the file, choose **Model Type** (`checkpoints`, `loras`,
+   `vae`, …) and click **Download**. The file lands on your volume and shows up in the loaders.
+3. For gated Hugging Face repos or Civitai downloads that need login, add your own
+   **Civitai API key** / **Hugging Face token** in ComfyUI **Settings → Model Manager**. Tokens are
+   stored only on your volume (`custom_nodes/ComfyUI-Model-Manager/private.key`) and shown masked.
 
 Civicomfy is also installed if you prefer searching Civitai from inside ComfyUI.
 
@@ -72,6 +73,16 @@ A volume that already has models under `/workspace/ComfyUI/models` is used as-is
 
 Custom nodes you install with ComfyUI-Manager are kept on the volume; their Python packages are
 re-installed on each new container (cached on the volume, so it is quick).
+
+## Measured on RTX 5090 (Secure Cloud, EU-RO-1, 2026-09-13)
+
+| Step | Time |
+|---|---|
+| First boot on a new host (includes pulling the image) | 389 s |
+| Pod restart until ComfyUI answers | about a minute or less (ComfyUI itself starts in ~8 s) |
+| Preset check when the volume already has the models | 0 s download |
+| MiniMax H3, reference image, 5 s 512×896, 4 steps — first job after boot | 230 s |
+| Same, next job (model warm) | 38 s |
 
 ## Tips for H3 and SCAIL-2
 
