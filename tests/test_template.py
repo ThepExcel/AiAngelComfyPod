@@ -9,6 +9,7 @@ PRESETS = ROOT / "presets" / "models.tsv"
 IMAGE_FILES = [
     ROOT / "Dockerfile",
     *sorted(p for p in (ROOT / "docker").iterdir() if p.is_file()),
+    *sorted(p for p in (ROOT / "nodes").rglob("*") if p.is_file() and "__pycache__" not in p.parts),
     PRESETS,
 ]
 ALLOWED_HOSTS = {"huggingface.co"}

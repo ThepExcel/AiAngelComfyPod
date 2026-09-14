@@ -9,16 +9,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name):
-    spec = importlib.util.spec_from_file_location(name, ROOT / "docker" / f"{name}.py")
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
 
-fx = load("fetch_extra")
-pm = load("patch_model_manager")
+fx = load("aiangel_fetch", ROOT / "nodes" / "ComfyUI-AiAngel" / "fetch.py")
+pm = load("patch_model_manager", ROOT / "docker" / "patch_model_manager.py")
 
 
 def test_parse_entries_forms():
@@ -34,6 +34,25 @@ def test_parse_entries_forms():
 def test_parse_entries_rejects_unknown_folder():
     with pytest.raises(ValueError):
         fx.parse_entries("weights|https://x.test/a.safetensors")
+
+
+def test_parse_entries_skips_comment_lines_and_rejects_non_links():
+    raw = "# my list\nhttps://x.test/a.safetensors\n"
+    assert fx.parse_entries(raw) == [(None, "https://x.test/a.safetensors", None)]
+    with pytest.raises(ValueError):
+        fx.parse_entries("not-a-link")
+
+
+def test_download_without_civitai_key_reports_instead_of_raising(tmp_path):
+    job = {
+        "folder": "loras",
+        "name": "x.safetensors",
+        "url": "https://civitai.com/api/download/models/1",
+        "size": 10,
+        "site": "civitai",
+    }
+    ok, msg = fx.download(job, tmp_path, {"civitai": None})
+    assert not ok and "Civitai API key" in msg
 
 
 @pytest.mark.parametrize(

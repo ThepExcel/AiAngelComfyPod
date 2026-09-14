@@ -124,7 +124,7 @@ echo "================================================================"
 if [ -n "${MODELS:-}" ] || [ -n "${EXTRA_MODELS:-}" ]; then
     (
         [ -n "${MODELS:-}" ] && /opt/aiangel/download_models.sh "$MODELS"
-        [ -n "${EXTRA_MODELS:-}" ] && python3.12 /opt/aiangel/fetch_extra.py
+        [ -n "${EXTRA_MODELS:-}" ] && python3.12 "$BAKED_NODES/ComfyUI-AiAngel/fetch.py"
     ) > "$LOG_DIR/models.log" 2>&1 &
     stamp "downloading models in background (log: $LOG_DIR/models.log)"
 fi

@@ -1,14 +1,20 @@
-"""Download extra models named in EXTRA_MODELS (Civitai, Hugging Face or direct links).
+"""Resolve and download a pasted model list (Civitai, Hugging Face or direct links).
 
-EXTRA_MODELS holds entries separated by newlines, spaces or ";". Each entry is
+Used by the ComfyUI sidebar tab (this package's __init__.py) and at pod boot for EXTRA_MODELS:
+
+    python3.12 fetch.py              # reads EXTRA_MODELS, MODELS_DIR, CIVITAI_TOKEN, HF_TOKEN
+    python3.12 fetch.py --dry-run    # resolve only
+
+A list holds entries separated by newlines, spaces or ";". Lines starting with # are comments.
 
     URL                      folder chosen automatically
     FOLDER|URL               e.g. loras|https://civitai.com/models/123?modelVersionId=456
     FOLDER|URL|FILE_PART     pick the Civitai file whose name contains FILE_PART
 
-Civitai links may use civitai.com or civitai.red; a download needs CIVITAI_TOKEN (your own
-Civitai API key). Hugging Face links use HF_TOKEN when set. Tokens are sent only to their own
-site and never printed. Files already present at the expected size are skipped.
+Civitai links may use civitai.com or civitai.red; downloads need a Civitai API key. The key
+goes into the civitai.com URL as ?token= (an Authorization header would be replayed to the
+signed storage URL Civitai redirects to). Hugging Face links use a Bearer token when given.
+Tokens are never printed. Files already present at the expected size are skipped.
 """
 
 from __future__ import annotations
@@ -16,9 +22,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -40,16 +48,17 @@ KNOWN_FOLDERS = {
 
 def parse_entries(raw: str) -> list[tuple[str | None, str, str | None]]:
     entries = []
-    for token in re.split(r"[\s;]+", raw.strip()):
+    text = "\n".join(ln for ln in raw.splitlines() if not ln.lstrip().startswith("#"))
+    for token in re.split(r"[\s;]+", text.strip()):
         if not token:
             continue
         parts = token.split("|")
-        if len(parts) == 1:
+        if len(parts) == 1 and parts[0].startswith("http"):
             entries.append((None, parts[0], None))
-        elif len(parts) in (2, 3) and parts[0] in KNOWN_FOLDERS:
+        elif len(parts) in (2, 3) and parts[0] in KNOWN_FOLDERS and parts[1].startswith("http"):
             entries.append((parts[0], parts[1], parts[2] if len(parts) == 3 else None))
         else:
-            raise ValueError(f"bad EXTRA_MODELS entry: {token[:80]}")
+            raise ValueError(f"bad entry: {token[:80]}")
     return entries
 
 
@@ -69,6 +78,8 @@ def civitai_ids(url: str) -> tuple[str | None, str | None]:
 def pick_file(files: list[dict], file_part: str | None) -> dict:
     weights = [f for f in files if f.get("type") in ("Model", "Diffusion Model", "Pruned Model")]
     candidates = weights or files
+    if not candidates:
+        raise ValueError("this version has no files")
     if file_part:
         matched = [f for f in candidates if file_part in f.get("name", "")]
         if not matched:
@@ -115,7 +126,7 @@ def resolve(folder: str | None, url: str, file_part: str | None) -> dict:
             "name": f["name"],
             "url": f["downloadUrl"],
             "size": int(round(float(f.get("sizeKB") or 0) * 1024)),
-            "token_env": "CIVITAI_TOKEN",
+            "site": "civitai",
         }
     name = Path(urlparse(url).path).name
     if not name:
@@ -125,7 +136,7 @@ def resolve(folder: str | None, url: str, file_part: str | None) -> dict:
         "name": name,
         "url": url,
         "size": 0,
-        "token_env": "HF_TOKEN" if host == "huggingface.co" else None,
+        "site": "huggingface" if host == "huggingface.co" else "direct",
     }
 
 
@@ -140,61 +151,79 @@ def already_have(path: Path, size: int) -> bool:
     return size == 0 or abs(path.stat().st_size - size) <= 4096
 
 
-def main() -> int:
-    raw = os.environ.get("EXTRA_MODELS", "")
+def _python_download(url: str, dest: Path, headers: dict) -> bool:
+    """Resumable fallback when aria2c is not installed."""
+    part = dest.with_name(dest.name + ".part")
+    have = part.stat().st_size if part.exists() else 0
+    req = urllib.request.Request(url, headers={**UA, **headers})
+    if have:
+        req.add_header("Range", f"bytes={have}-")
+    with urllib.request.urlopen(req, timeout=120) as r:
+        mode = "ab" if have and r.status == 206 else "wb"
+        with open(part, mode) as f:
+            shutil.copyfileobj(r, f, 8 * 1024 * 1024)
+    part.replace(dest)
+    return True
+
+
+def partial_path(job: dict, models_dir: Path) -> Path:
+    """The file that grows while this job downloads (for progress display)."""
+    dest = models_dir / job["folder"] / job["name"]
+    return dest if shutil.which("aria2c") else dest.with_name(dest.name + ".part")
+
+
+def download(job: dict, models_dir: Path, tokens: dict) -> tuple[bool, str]:
+    """Download one resolved job. Returns (ok, message) and never raises."""
+    dest = models_dir / job["folder"] / job["name"]
+    label = f"{job['folder']}/{job['name']}"
+    if already_have(dest, job["size"]):
+        return True, f"have {label}"
+    token = tokens.get(job["site"]) or ""
+    if job["site"] == "civitai" and not token:
+        return False, f"{label}: Civitai downloads need your Civitai API key"
+    url, headers = job["url"], {}
+    if token and job["site"] == "civitai":
+        url = authed_civitai_url(url, token)
+    elif token:
+        headers["Authorization"] = f"Bearer {token}"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if shutil.which("aria2c"):
+            cmd = ["aria2c", "-q", "-x", "16", "-s", "16", "-c", "--file-allocation=none"]
+            cmd += ["--auto-file-renaming=false", "-d", str(dest.parent), "-o", dest.name]
+            cmd += [f"--header={k}: {v}" for k, v in headers.items()]
+            ok = subprocess.run(cmd + [url]).returncode == 0
+        else:
+            ok = _python_download(url, dest, headers)
+    except Exception as e:  # a network error must not kill the caller's loop
+        return False, f"{label}: {type(e).__name__}"
+    ok = ok and already_have(dest, job["size"])
+    return ok, f"{'got' if ok else 'DOWNLOAD FAILED'} {label}"
+
+
+def env_tokens() -> dict:
+    return {"civitai": os.environ.get("CIVITAI_TOKEN"), "huggingface": os.environ.get("HF_TOKEN")}
+
+
+def main(argv: list[str], emit: Callable[[str], None] = print) -> int:
     models_dir = Path(os.environ.get("MODELS_DIR", "/opt/comfyui/models"))
-    dry = "--dry-run" in sys.argv
     failed = 0
-    for folder, url, file_part in parse_entries(raw):
+    for folder, url, file_part in parse_entries(os.environ.get("EXTRA_MODELS", "")):
         try:
             job = resolve(folder, url, file_part)
         except Exception as e:  # report and continue with the next entry
-            print(f"[extra] RESOLVE FAILED {url[:80]}: {e}", flush=True)
+            emit(f"[extra] RESOLVE FAILED {url[:80]}: {e}")
             failed += 1
             continue
-        dest = models_dir / job["folder"] / job["name"]
-        gb = job["size"] / 1e9
-        if dry:
-            print(f"[extra] {job['folder']}/{job['name']} {gb:.2f} GB", flush=True)
+        emit(f"[extra] {job['folder']}/{job['name']} {job['size'] / 1e9:.2f} GB")
+        if "--dry-run" in argv:
             continue
-        if already_have(dest, job["size"]):
-            print(f"[extra] have {job['folder']}/{job['name']}", flush=True)
-            continue
-        label = f"{job['folder']}/{job['name']}"
-        token = os.environ.get(job["token_env"] or "", "")
-        if job["token_env"] == "CIVITAI_TOKEN" and not token:
-            print(f"[extra] SKIPPED {label}: Civitai downloads need CIVITAI_TOKEN", flush=True)
-            failed += 1
-            continue
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [
-            "aria2c",
-            "-q",
-            "-x",
-            "16",
-            "-s",
-            "16",
-            "-c",
-            "--auto-file-renaming=false",
-            "-d",
-            str(dest.parent),
-            "-o",
-            dest.name,
-        ]
-        url = job["url"]
-        if token and job["token_env"] == "CIVITAI_TOKEN":
-            # A query token stays on civitai.com; an Authorization header would be replayed to the
-            # signed storage URL Civitai redirects to, which rejects a second auth mechanism.
-            url = authed_civitai_url(url, token)
-        elif token:
-            cmd.append(f"--header=Authorization: Bearer {token}")
-        print(f"[extra] downloading {label} ({gb:.2f} GB)", flush=True)
-        ok = subprocess.run(cmd + [url]).returncode == 0 and already_have(dest, job["size"])
-        print(f"[extra] {'got' if ok else 'DOWNLOAD FAILED'} {label}", flush=True)
+        ok, msg = download(job, models_dir, env_tokens())
+        emit(f"[extra] {msg}")
         failed += 0 if ok else 1
-    print(f"[extra] done, {failed} problem(s)", flush=True)
+    emit(f"[extra] done, {failed} problem(s)")
     return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:], lambda s: print(s, flush=True)))

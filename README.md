@@ -1,8 +1,8 @@
 # AI Angel ComfyPod
 
-ComfyUI on RunPod, tuned for the heavy video models **MiniMax H3** and **SCAIL-2**:
-fast restarts, one-switch model download, and a built-in downloader for any checkpoint or
-LoRA from Hugging Face or Civitai.
+ComfyUI on RunPod, tuned for **MiniMax H3**, **SCAIL-2** and **Krea 2**: fast restarts,
+one-switch model presets, and a **Model list** panel — paste any list of Civitai or Hugging Face
+links, press one button, and every checkpoint, LoRA and VAE lands in the right folder.
 
 Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
@@ -12,10 +12,10 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 - **Fast boots.** ComfyUI and all Python packages are inside the image, not on your network
   volume, so a restart does not re-install or re-import anything from slow storage. Only your
   models, inputs, outputs, settings and custom nodes live on the volume.
-- **Model presets.** Set `MODELS=h3`, `MODELS=scail`, `MODELS=h3,scail` or `MODELS=all` and the
-  first boot downloads exactly those files. Files already on the volume at the right size are
-  skipped, so later boots download nothing.
-- **Add any checkpoint / LoRA from Hugging Face or Civitai** — see below.
+- **Model presets.** Set `MODELS=h3`, `scail`, `krea2` (or a comma list, or `all`) and the first
+  boot downloads exactly those files. Files already on the volume at the right size are skipped,
+  so later boots download nothing.
+- **Model list panel** — paste a whole list of links and download them all; see below.
 - ComfyUI-Manager, KJNodes, Civicomfy (Civitai search), FileBrowser and JupyterLab.
 
 ## Quick start
@@ -45,9 +45,37 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 | 8080 | FileBrowser (user `admin`) |
 | 8888 | JupyterLab |
 
-## Add a checkpoint or LoRA from Hugging Face / Civitai
+## Download a list of models (Model list panel)
 
-The image includes [ComfyUI-Model-Manager](https://github.com/hayden-cn/ComfyUI-Model-Manager).
+1. In ComfyUI, click the **cloud-download icon** in the left sidebar (**Model list**).
+2. Paste your **Civitai API key** once (Civitai → Account settings → API Keys). It is saved on your
+   own volume under `/workspace/aiangel/.secrets/` and shown masked. A Hugging Face token is only
+   needed for gated repos.
+3. Paste your list — one link per line — and press **Download all**. Each file shows its progress.
+   When they finish, press **R** in ComfyUI to refresh the model lists.
+
+List format (lines starting with `#` are ignored):
+
+```
+# a Civitai model page (civitai.com or civitai.red); the version in the link is used
+https://civitai.com/models/12345/some-model?modelVersionId=67890
+# folder|link puts the file in a specific models folder
+loras|https://civitai.red/models/111/some-lora?modelVersionId=222
+# folder|link|text picks the file whose name contains "text" when a version has several
+diffusion_models|https://civitai.com/models/333?modelVersionId=444|int8
+# Hugging Face or any direct file link
+vae|https://huggingface.co/some-org/some-repo/resolve/main/file.safetensors
+```
+
+- Without a folder, Civitai's own label decides. Some uploads label a UNet-only file as a
+  checkpoint — put `diffusion_models|` in front of those.
+- Files already on the volume at the right size are skipped, so pasting the same list again is safe.
+- The same list works at boot: put it in the `EXTRA_MODELS` variable, with your key in a RunPod
+  secret (`CIVITAI_TOKEN={{ RUNPOD_SECRET_civitai }}`). Progress is in `logs/models.log`.
+
+## Add one model at a time (Model Manager)
+
+The image also includes [ComfyUI-Model-Manager](https://github.com/hayden-cn/ComfyUI-Model-Manager).
 
 1. Click **Model Manager** in the top bar, then the download icon → **Create Download Task**.
 2. Paste a model page link from `civitai.com` or `huggingface.co` (or a direct `.safetensors`
@@ -62,24 +90,6 @@ go to `diffusion_models` by default; you can still change the folder before down
 
 Civicomfy is also installed if you prefer searching Civitai from inside ComfyUI.
 
-### Download your own list on every boot (`EXTRA_MODELS`)
-
-Put one entry per line (or separate with `;`). Keep the list in your own RunPod template or pod
-settings, and your Civitai key in a RunPod secret (`CIVITAI_TOKEN={{ RUNPOD_SECRET_civitai }}`).
-
-```
-https://civitai.com/models/12345/some-model?modelVersionId=67890
-loras|https://civitai.red/models/111/some-lora?modelVersionId=222
-diffusion_models|https://civitai.com/models/333?modelVersionId=444|int8
-https://huggingface.co/some-org/some-repo/resolve/main/file.safetensors
-```
-
-- `folder|link` sets the models folder (`checkpoints`, `loras`, `diffusion_models`, `vae`, ...).
-  Without it, Civitai's own label decides — some uploads label a UNet-only file as a checkpoint,
-  so set `diffusion_models|` for those.
-- `folder|link|text` picks the Civitai file whose name contains `text` when a version has several.
-- Files already on the volume at the right size are skipped. Progress is in `logs/models.log`.
-
 ## Where things are
 
 ```
@@ -89,7 +99,7 @@ https://huggingface.co/some-org/some-repo/resolve/main/file.safetensors
   user/            ComfyUI settings and saved workflows
   custom_nodes/    nodes (yours persist; image nodes are refreshed when the image updates)
   logs/            models.log, filebrowser.log, jupyter.log
-  .secrets/        generated FileBrowser / Jupyter passwords
+  .secrets/        your API keys and the generated FileBrowser / Jupyter passwords
 ```
 
 A volume that already has models under `/workspace/ComfyUI/models` is used as-is.
@@ -115,8 +125,9 @@ re-installed on each new container (cached on the volume, so it is quick).
 
 ## Build
 
-GitHub Actions builds and pushes the image on every change to `Dockerfile`, `docker/` or
-`presets/`. Model presets are plain Hugging Face links in `presets/models.tsv`.
+GitHub Actions builds and pushes the image on every change to `Dockerfile`, `docker/`, `nodes/`
+or `presets/`. Model presets are plain Hugging Face links in `presets/models.tsv`; the Model list
+panel is the custom node in `nodes/ComfyUI-AiAngel`.
 
 ## License
 

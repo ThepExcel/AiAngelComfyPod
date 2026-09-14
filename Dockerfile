@@ -42,8 +42,12 @@ RUN curl -fSL "https://github.com/hayden-cn/ComfyUI-Model-Manager/releases/downl
 COPY presets/models.tsv /opt/aiangel/models.tsv
 COPY docker/start.sh /opt/aiangel/start.sh
 COPY docker/download_models.sh /opt/aiangel/download_models.sh
-COPY docker/fetch_extra.py docker/seed_model_manager_keys.py /opt/aiangel/
-RUN chmod +x /opt/aiangel/*.sh \
+COPY docker/seed_model_manager_keys.py /opt/aiangel/
+# Our own node: the "Model list" sidebar tab (paste links, download all) and the boot downloader.
+COPY nodes/ComfyUI-AiAngel /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel
+RUN echo "AIANGEL_NODE=$(sha256sum /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel/*.py /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel/web/*.js | sha256sum | cut -c1-12)" \
+        >> /opt/comfyui/.runpod-bundle-version \
+    && chmod +x /opt/aiangel/*.sh \
     && python3.12 -c "import torch, comfy_kitchen; print('torch', torch.__version__)"
 
 ENV DATA_DIR=/workspace/aiangel \

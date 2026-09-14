@@ -2,3 +2,5 @@
 !Dockerfile
 !docker/
 !presets/
+!nodes/
+**/__pycache__
