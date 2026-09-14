@@ -136,9 +136,20 @@ def resolve(folder: str | None, url: str, file_part: str | None) -> dict:
         "folder": folder or "checkpoints",
         "name": name,
         "url": url,
-        "size": 0,
+        "size": remote_size(url),
         "site": "huggingface" if host == "huggingface.co" else "direct",
     }
+
+
+def remote_size(url: str) -> int:
+    """Byte size from a HEAD request (0 when the server will not say). Without it a 0-byte file
+    left by a failed attempt looked like a finished download (seen on a pod 2026-09-14)."""
+    try:
+        req = urllib.request.Request(url, headers=UA, method="HEAD")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return int(r.headers.get("Content-Length") or 0)
+    except Exception:  # gated repo without a token, offline, ...: size stays unknown
+        return 0
 
 
 def authed_civitai_url(url: str, token: str) -> str:
@@ -148,6 +159,8 @@ def authed_civitai_url(url: str, token: str) -> str:
 def already_have(path: Path, size: int) -> bool:
     if not path.exists() or path.with_name(path.name + ".aria2").exists():
         return False
+    if path.with_name(path.name + ".aria2__temp").exists() or path.stat().st_size == 0:
+        return False  # an interrupted aria2c run or an empty leftover is never a finished file
     # Civitai reports size in KB with rounding, so allow a little slack.
     return size == 0 or abs(path.stat().st_size - size) <= 4096
 

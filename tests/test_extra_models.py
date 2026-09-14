@@ -108,6 +108,34 @@ def test_already_have_tolerates_kb_rounding(tmp_path):
     assert not fx.already_have(f, 10_000)
 
 
+def test_already_have_rejects_empty_leftovers_when_size_unknown(tmp_path):
+    """A failed Hugging Face download left a 0-byte file that was skipped as 'have' on a pod."""
+    f = tmp_path / "lora.safetensors"
+    f.write_bytes(b"")
+    assert not fx.already_have(f, 0)
+    f.write_bytes(b"x" * 100)
+    assert fx.already_have(f, 0)
+    (tmp_path / "lora.safetensors.aria2__temp").write_bytes(b"")
+    assert not fx.already_have(f, 0)
+
+
+def test_remote_size_reads_content_length_and_survives_errors(tmp_path):
+    import functools
+    import http.server
+    import threading
+
+    (tmp_path / "w.safetensors").write_bytes(b"z" * 1234)
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(tmp_path))
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        port = srv.server_address[1]
+        assert fx.remote_size(f"http://127.0.0.1:{port}/w.safetensors") == 1234
+    finally:
+        srv.shutdown()
+    assert fx.remote_size("http://127.0.0.1:9/nothing-listens-here") == 0
+
+
 ARIA2_403 = """09/14 08:57:42 [ERROR] CUID#7 - Download aborted. URI=https://civitai.com/api/download/models/1
 Exception: [AbstractCommand.cc:351] errorCode=22 URI=https://b2.civitai.com/file/x.safetensors
   -> [HttpSkipResponseCommand.cc:239] errorCode=22 The response status is not successful. status=403
