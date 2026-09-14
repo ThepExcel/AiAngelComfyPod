@@ -108,6 +108,59 @@ def test_already_have_tolerates_kb_rounding(tmp_path):
     assert not fx.already_have(f, 10_000)
 
 
+ARIA2_403 = """09/14 08:57:42 [ERROR] CUID#7 - Download aborted. URI=https://civitai.com/api/download/models/1
+Exception: [AbstractCommand.cc:351] errorCode=22 URI=https://b2.civitai.com/file/x.safetensors
+  -> [HttpSkipResponseCommand.cc:239] errorCode=22 The response status is not successful. status=403
+"""
+
+
+def test_aria2_reason_names_the_http_status():
+    assert fx._aria2_reason(ARIA2_403) == "status=403"
+    assert "errorCode=1" in fx._aria2_reason("[ERROR] errorCode=1 network")
+
+
+def test_download_falls_back_when_aria2_is_refused(tmp_path, monkeypatch):
+    """b2.civitai.com answered aria2c with 403 on a real pod while a plain GET worked."""
+    body = b"w" * 5000
+    served = tmp_path / "srv" / "lora.safetensors"
+    served.parent.mkdir()
+    served.write_bytes(body)
+    models = tmp_path / "models"
+    monkeypatch.setattr(fx.shutil, "which", lambda name: "/usr/bin/aria2c")
+
+    def refused(url, dest, headers):
+        dest.write_bytes(b"")  # aria2c leaves an empty file and a control file behind
+        dest.with_name(dest.name + ".aria2").write_bytes(b"")
+        return False, "status=403"
+
+    monkeypatch.setattr(fx, "_aria2_download", refused)
+    job = {
+        "folder": "loras",
+        "name": "lora.safetensors",
+        "size": len(body),
+        "site": "other",
+        "url": served.as_uri(),
+    }
+    ok, msg = fx.download(job, models, {})
+    assert ok, msg
+    assert (models / "loras" / "lora.safetensors").read_bytes() == body
+    assert not (models / "loras" / "lora.safetensors.aria2").exists()
+
+
+def test_download_failure_message_carries_the_reason(tmp_path, monkeypatch):
+    monkeypatch.setattr(fx.shutil, "which", lambda name: "/usr/bin/aria2c")
+    monkeypatch.setattr(fx, "_aria2_download", lambda url, dest, headers: (False, "status=403"))
+    job = {
+        "folder": "loras",
+        "name": "gone.safetensors",
+        "size": 10,
+        "site": "other",
+        "url": (tmp_path / "missing.safetensors").as_uri(),
+    }
+    ok, msg = fx.download(job, tmp_path / "models", {})
+    assert not ok and "status=403" in msg and "DOWNLOAD FAILED" in msg
+
+
 def test_patch_model_manager_applies_once_and_fails_on_drift(tmp_path):
     src = tmp_path / "information.py"
     src.write_text(

@@ -25,6 +25,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -169,7 +170,35 @@ def _python_download(url: str, dest: Path, headers: dict) -> bool:
 def partial_path(job: dict, models_dir: Path) -> Path:
     """The file that grows while this job downloads (for progress display)."""
     dest = models_dir / job["folder"] / job["name"]
-    return dest if shutil.which("aria2c") else dest.with_name(dest.name + ".part")
+    part = dest.with_name(dest.name + ".part")
+    return part if part.exists() else dest
+
+
+def _aria2_reason(output: str) -> str:
+    """The useful part of aria2c's error output, e.g. 'status=403'."""
+    m = re.search(r"status=\d{3}", output)
+    if m:
+        return m.group(0)
+    errors = [ln.strip() for ln in output.splitlines() if "ERROR" in ln or "errorCode" in ln]
+    return (errors[-1] if errors else "aria2c failed")[:160]
+
+
+def _aria2_download(url: str, dest: Path, headers: dict) -> tuple[bool, str]:
+    cmd = [
+        "aria2c",
+        "-x",
+        "16",
+        "-s",
+        "16",
+        "-c",
+        "--file-allocation=none",
+        "--console-log-level=error",
+    ]
+    cmd += ["--summary-interval=0", f"--user-agent={UA['User-Agent']}"]
+    cmd += ["--auto-file-renaming=false", "-d", str(dest.parent), "-o", dest.name]
+    cmd += [f"--header={k}: {v}" for k, v in headers.items()]
+    p = subprocess.run(cmd + [url], capture_output=True, text=True, errors="replace")
+    return p.returncode == 0, "" if p.returncode == 0 else _aria2_reason(p.stdout + p.stderr)
 
 
 def download(job: dict, models_dir: Path, tokens: dict) -> tuple[bool, str]:
@@ -187,18 +216,31 @@ def download(job: dict, models_dir: Path, tokens: dict) -> tuple[bool, str]:
     elif token:
         headers["Authorization"] = f"Bearer {token}"
     dest.parent.mkdir(parents=True, exist_ok=True)
+    reason = ""
+    ok = False
     try:
         if shutil.which("aria2c"):
-            cmd = ["aria2c", "-q", "-x", "16", "-s", "16", "-c", "--file-allocation=none"]
-            cmd += ["--auto-file-renaming=false", "-d", str(dest.parent), "-o", dest.name]
-            cmd += [f"--header={k}: {v}" for k, v in headers.items()]
-            ok = subprocess.run(cmd + [url]).returncode == 0
-        else:
+            ok, reason = _aria2_download(url, dest, headers)
+        if not ok:
+            # Some Civitai files redirect to b2.civitai.com, which answers aria2c with 403 while a
+            # plain single-connection GET works (measured on a pod 2026-09-14).
+            if reason:
+                dest.unlink(missing_ok=True)
+                dest.with_name(dest.name + ".aria2").unlink(missing_ok=True)
             ok = _python_download(url, dest, headers)
+    except urllib.error.HTTPError as e:
+        return False, f"DOWNLOAD FAILED {label}: HTTP {e.code}" + (
+            f" (aria2c {reason})" if reason else ""
+        )
     except Exception as e:  # a network error must not kill the caller's loop
-        return False, f"{label}: {type(e).__name__}"
+        return False, f"DOWNLOAD FAILED {label}: {type(e).__name__}" + (
+            f" (aria2c {reason})" if reason else ""
+        )
     ok = ok and already_have(dest, job["size"])
-    return ok, f"{'got' if ok else 'DOWNLOAD FAILED'} {label}"
+    if ok:
+        return True, f"got {label}"
+    size_now = dest.stat().st_size if dest.exists() else 0
+    return False, f"DOWNLOAD FAILED {label}: size {size_now} != expected {job['size']}"
 
 
 def env_tokens() -> dict:

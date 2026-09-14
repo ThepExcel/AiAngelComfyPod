@@ -221,7 +221,9 @@ function renderOutputs(container) {
       if (f.kind === "image") {
         media = el("img", { src: viewUrl(f.path, true), loading: "lazy", alt: f.path });
       } else if (f.kind === "video") {
-        media = el("video", { src: viewUrl(f.path), preload: "metadata", muted: "", playsinline: "",
+        // "#t=0.1" makes the browser seek and paint a real frame; plain preload=metadata left
+        // most tiles black on a RunPod pod (2026-09-14).
+        media = el("video", { src: `${viewUrl(f.path)}#t=0.1`, preload: "metadata", muted: "", playsinline: "",
           onmouseenter: (e) => e.target.play().catch(() => {}), onmouseleave: (e) => e.target.pause() });
       } else {
         media = el("div", { style: { display: "grid", placeItems: "center", fontSize: "11px", opacity: 0.7 } },
