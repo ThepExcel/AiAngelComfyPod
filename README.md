@@ -16,6 +16,8 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
   boot downloads exactly those files. Files already on the volume at the right size are skipped,
   so later boots download nothing.
 - **Model list panel** — paste a whole list of links and download them all; see below.
+- **Outputs panel** — download new results as one ZIP in a click, or sync them all to your
+  computer with `pull.py`.
 - ComfyUI-Manager, KJNodes, Civicomfy (Civitai search), FileBrowser and JupyterLab.
 
 ## Quick start
@@ -72,6 +74,31 @@ vae|https://huggingface.co/some-org/some-repo/resolve/main/file.safetensors
 - Files already on the volume at the right size are skipped, so pasting the same list again is safe.
 - The same list works at boot: put it in the `EXTRA_MODELS` variable, with your key in a RunPod
   secret (`CIVITAI_TOKEN={{ RUNPOD_SECRET_civitai }}`). Progress is in `logs/models.log`.
+
+## Get your results out (Outputs panel)
+
+Click the **images icon** in the left sidebar (**Outputs**). Every result on the pod shows as a
+thumbnail, newest first, with a **NEW** tag on anything you have not downloaded yet from this
+browser.
+
+- **Download N new** — one ZIP of everything made since your last download. Press it after each
+  batch; the button remembers where you stopped.
+- **Click thumbnails** to pick some, then **Selected** — one ZIP of just those. **All** takes the
+  whole filtered list (All / Images / Videos). The **↓** on a thumbnail saves that one file.
+- ZIPs are not re-compressed (images and videos already are), so the download starts at once and
+  the pod spends no time packing.
+
+**Sync everything to your computer** (at the bottom of the panel) is for big batches, such as a
+night of video jobs. Get `pull.py` from the panel, copy the command, and run it on your computer
+(Python 3.9+, nothing to install):
+
+```
+python pull.py https://<pod-id>-8188.proxy.runpod.net ./aiangel-outputs
+```
+
+It downloads several files at a time (`--jobs 4` by default), skips files you already have, and
+resumes a file that was cut off — run it again whenever you like and only new results come down.
+`--only video` and `--since-hours 6` narrow what it takes.
 
 ## Add one model at a time (Model Manager)
 

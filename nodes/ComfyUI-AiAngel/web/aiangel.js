@@ -106,9 +106,206 @@ function render(container) {
   const timer = setInterval(() => (container.isConnected ? refresh() : clearInterval(timer)), 2000);
 }
 
+// ---------------------------------------------------------------- Outputs tab
+
+const SEEN_KEY = "aiangel.outputs.downloadedUpTo";
+
+function readMark() {
+  try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch { return 0; }
+}
+
+function writeMark(value) {
+  try { localStorage.setItem(SEEN_KEY, String(value)); } catch { /* private window */ }
+}
+
+function size(bytes) {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+}
+
+function viewUrl(path, preview) {
+  const i = path.lastIndexOf("/");
+  const q = new URLSearchParams({ filename: path.slice(i + 1), type: "output" });
+  if (i > 0) q.set("subfolder", path.slice(0, i));
+  if (preview) q.set("preview", "webp;60");
+  return api.apiURL(`/view?${q}`);
+}
+
+// A form POST lets the browser stream the ZIP straight to disk, however large.
+function downloadZip(paths) {
+  const frame = "aiangel-zip-frame";
+  if (!document.getElementById(frame)) {
+    document.body.append(el("iframe", { id: frame, name: frame, style: { display: "none" } }));
+  }
+  const form = el("form", { method: "POST", action: api.apiURL("/aiangel/outputs/zip"), target: frame },
+    el("input", { type: "hidden", name: "files", value: JSON.stringify(paths) }));
+  document.body.append(form);
+  form.submit();
+  form.remove();
+}
+
+function renderOutputs(container) {
+  let files = [];
+  let filter = "all";
+  let limit = 60;
+  const selected = new Set();
+
+  const primary = el("button", { style: { ...buttonStyle, width: "100%", padding: "10px 12px",
+    fontWeight: "600", background: "#2e7d32", borderColor: "#2e7d32", color: "#fff" } });
+  const selBtn = el("button", { style: buttonStyle });
+  const allBtn = el("button", { style: buttonStyle });
+  const clearBtn = el("button", { style: buttonStyle }, "Clear");
+  const chips = el("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap" } });
+  const summary = el("div", { style: { fontSize: "12px", opacity: 0.75 } });
+  const grid = el("div", { style: { display: "grid", gap: "6px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))" } });
+  const more = el("button", { style: { ...buttonStyle, display: "none" } }, "Show more");
+  const note = el("div", { style: { fontSize: "12px" } });
+  note.hidden = true;
+  const cmd = el("textarea", { rows: 3, readonly: "", spellcheck: "false",
+    style: { ...fieldStyle, fontFamily: "monospace", fontSize: "11px", resize: "none" } });
+
+  const visible = () => files.filter((f) => filter === "all" || f.kind === filter);
+  const bytesOf = (list) => list.reduce((n, f) => n + f.size, 0);
+
+  function start(list, advanceMark) {
+    if (!list.length) return;
+    downloadZip(list.map((f) => f.path));
+    if (advanceMark) writeMark(Math.max(readMark(), ...list.map((f) => f.mtime)));
+    note.hidden = false;
+    note.textContent = `ZIP of ${list.length} file(s), ${size(bytesOf(list))} — the browser saves it as it arrives.`;
+    draw();
+  }
+
+  function draw() {
+    const mark = readMark();
+    const fresh = files.filter((f) => f.mtime > mark);
+    const shown = visible();
+    const picked = files.filter((f) => selected.has(f.path));
+
+    primary.textContent = fresh.length
+      ? `Download ${fresh.length} new · ${size(bytesOf(fresh))}`
+      : "No new outputs since your last download";
+    primary.disabled = !fresh.length;
+    primary.style.opacity = fresh.length ? 1 : 0.5;
+    primary.onclick = () => start(fresh, true);
+
+    selBtn.textContent = `Selected (${picked.length})`;
+    selBtn.disabled = !picked.length;
+    selBtn.style.opacity = picked.length ? 1 : 0.5;
+    selBtn.onclick = () => start(picked, false);
+    allBtn.textContent = `All ${shown.length}`;
+    allBtn.onclick = () => start(shown, filter === "all");
+    clearBtn.style.display = picked.length ? "" : "none";
+    clearBtn.onclick = () => { selected.clear(); draw(); };
+
+    const counts = { all: files.length };
+    for (const f of files) counts[f.kind] = (counts[f.kind] || 0) + 1;
+    chips.replaceChildren(...["all", "image", "video", "audio", "other"]
+      .filter((k) => k === "all" || counts[k])
+      .map((k) => el("button", {
+        style: { ...buttonStyle, padding: "3px 10px", borderRadius: "999px", fontSize: "12px",
+          ...(filter === k ? { background: "var(--fg-color, #eee)", color: "var(--comfy-menu-bg, #222)" } : {}) },
+        onclick: () => { filter = k; limit = 60; draw(); },
+      }, `${k === "all" ? "All" : k[0].toUpperCase() + k.slice(1) + "s"} ${counts[k]}`)));
+
+    summary.textContent = files.length
+      ? `${files.length} file(s), ${size(bytesOf(files))} on the pod · click to select, ↓ saves one`
+      : "No outputs yet. Results appear here as soon as a job finishes.";
+
+    grid.replaceChildren(...shown.slice(0, limit).map((f) => {
+      const on = selected.has(f.path);
+      const isNew = f.mtime > mark;
+      let media;
+      if (f.kind === "image") {
+        media = el("img", { src: viewUrl(f.path, true), loading: "lazy", alt: f.path });
+      } else if (f.kind === "video") {
+        media = el("video", { src: viewUrl(f.path), preload: "metadata", muted: "", playsinline: "",
+          onmouseenter: (e) => e.target.play().catch(() => {}), onmouseleave: (e) => e.target.pause() });
+      } else {
+        media = el("div", { style: { display: "grid", placeItems: "center", fontSize: "11px", opacity: 0.7 } },
+          f.path.split(".").pop().toUpperCase());
+      }
+      Object.assign(media.style, { width: "100%", height: "100%", objectFit: "cover", display: media.style.display || "block" });
+      const save = el("a", { href: viewUrl(f.path), download: f.path.split("/").pop(), title: "Download this file",
+        onclick: (e) => e.stopPropagation(),
+        style: { position: "absolute", right: "4px", bottom: "4px", width: "22px", height: "22px",
+          borderRadius: "4px", background: "rgba(0,0,0,.65)", color: "#fff", textAlign: "center",
+          lineHeight: "22px", textDecoration: "none", fontSize: "13px" } }, "↓");
+      const tags = el("div", { style: { position: "absolute", left: "4px", top: "4px", display: "flex", gap: "3px" } });
+      if (isNew) tags.append(el("span", { style: { background: "#2e7d32", color: "#fff", fontSize: "10px",
+        padding: "1px 5px", borderRadius: "3px" } }, "NEW"));
+      if (f.kind === "video") tags.append(el("span", { style: { background: "rgba(0,0,0,.65)", color: "#fff",
+        fontSize: "10px", padding: "1px 5px", borderRadius: "3px" } }, "▶"));
+      return el("div", {
+        title: `${f.path}\n${size(f.size)} · ${new Date(f.mtime * 1000).toLocaleString()}`,
+        onclick: () => { on ? selected.delete(f.path) : selected.add(f.path); draw(); },
+        style: { position: "relative", aspectRatio: "1", overflow: "hidden", borderRadius: "6px", cursor: "pointer",
+          background: "var(--comfy-input-bg, #222)",
+          outline: on ? "3px solid #4caf50" : "1px solid var(--border-color, #444)", outlineOffset: on ? "-3px" : "-1px" },
+      }, media, tags, save);
+    }));
+    more.style.display = shown.length > limit ? "" : "none";
+    more.textContent = `Show more (${shown.length - limit} left)`;
+  }
+
+  async function refresh() {
+    if (!container.isConnected) return;
+    try {
+      const data = await (await api.fetchApi("/aiangel/outputs")).json();
+      const sig = (list) => list.map((f) => `${f.path}:${f.size}:${f.mtime}`).join("|");
+      if (files.length && sig(files) === sig(data.files)) return; // unchanged: keep videos playing
+      files = data.files;
+      for (const p of [...selected]) if (!files.some((f) => f.path === p)) selected.delete(p);
+      draw();
+    } catch { /* pod busy or restarting; the next refresh tries again */ }
+  }
+
+  more.onclick = () => { limit += 60; draw(); };
+  const origin = location.origin + location.pathname.replace(/\/$/, "");
+  cmd.value = `python pull.py ${origin} ./aiangel-outputs`;
+  const copy = el("button", { style: buttonStyle, onclick: async () => {
+    try { await navigator.clipboard.writeText(cmd.value); copy.textContent = "Copied"; }
+    catch { cmd.select(); }
+  } }, "Copy command");
+  const getScript = el("a", { href: api.apiURL("/aiangel/pull.py"), download: "pull.py",
+    style: { ...buttonStyle, textDecoration: "none", display: "inline-block" } }, "Get pull.py");
+
+  container.replaceChildren(el("div",
+    { style: { display: "flex", flexDirection: "column", gap: "10px", padding: "12px" } },
+    el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+      el("div", { style: { fontWeight: "600" } }, "Outputs"),
+      el("button", { style: { ...buttonStyle, padding: "3px 10px" }, onclick: refresh }, "Refresh")),
+    primary,
+    el("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, selBtn, allBtn, clearBtn),
+    note,
+    chips, summary, grid, more,
+    el("details", { style: { fontSize: "12px" } },
+      el("summary", { style: { cursor: "pointer", fontWeight: "600" } }, "Sync everything to your computer"),
+      el("div", { style: { display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" } },
+        el("div", { style: { opacity: 0.8 } },
+          "For big batches: pull.py copies all results several files at a time, skips what you already have, and resumes cut-off files. Needs Python 3.9+."),
+        cmd,
+        el("div", { style: { display: "flex", gap: "8px" } }, getScript, copy)))));
+
+  refresh();
+  const onDone = () => (container.isConnected ? setTimeout(refresh, 500) : api.removeEventListener("executed", onDone));
+  api.addEventListener("executed", onDone);
+  const timer = setInterval(() => (container.isConnected ? refresh() : clearInterval(timer)), 15000);
+}
+
 app.registerExtension({
   name: "aiangel.modelList",
   setup() {
+    app.extensionManager.registerSidebarTab({
+      id: "aiangel-outputs",
+      icon: "pi pi-images",
+      title: "Outputs",
+      tooltip: "Download results in one ZIP, or sync them all to your computer",
+      type: "custom",
+      render: renderOutputs,
+    });
     app.extensionManager.registerSidebarTab({
       id: "aiangel-model-list",
       icon: "pi pi-cloud-download",

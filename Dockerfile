@@ -43,7 +43,8 @@ COPY presets/models.tsv /opt/aiangel/models.tsv
 COPY docker/start.sh /opt/aiangel/start.sh
 COPY docker/download_models.sh /opt/aiangel/download_models.sh
 COPY docker/seed_model_manager_keys.py /opt/aiangel/
-# Our own node: the "Model list" sidebar tab (paste links, download all) and the boot downloader.
+# Our own node: the "Model list" sidebar tab (paste links, download all), the boot downloader, and
+# the "Outputs" tab (ZIP download, pull.py sync).
 COPY nodes/ComfyUI-AiAngel /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel
 RUN echo "AIANGEL_NODE=$(sha256sum /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel/*.py /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel/web/*.js | sha256sum | cut -c1-12)" \
         >> /opt/comfyui/.runpod-bundle-version \

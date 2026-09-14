@@ -1,14 +1,22 @@
-"""AI Angel model list: paste a list of Civitai / Hugging Face links, press one button, and every
-file downloads into the right models folder. Adds a sidebar tab; no graph nodes.
+"""AI Angel sidebar tabs, no graph nodes.
+
+Model list: paste a list of Civitai / Hugging Face links, press one button, and every file
+downloads into the right models folder. Outputs: see every result, download many as one ZIP, or
+copy the pull script that syncs all new results to your computer.
 
 API (same origin as ComfyUI):
-  GET  /aiangel/status      jobs with progress, which API keys are saved (masked)
-  POST /aiangel/keys        {"civitai": "...", "huggingface": "..."}; "" keeps, "-" clears
-  POST /aiangel/download    {"text": "<pasted list>"} -> queued entries, or 400 with the bad line
+  GET  /aiangel/status        jobs with progress, which API keys are saved (masked)
+  POST /aiangel/keys          {"civitai": "...", "huggingface": "..."}; "" keeps, "-" clears
+  POST /aiangel/download      {"text": "<pasted list>"} -> queued entries, or 400 with the bad line
+  GET  /aiangel/outputs       output files, newest first: path, size, mtime, kind
+  POST /aiangel/outputs/zip   form or JSON field "files" (JSON list of paths; empty = all) -> ZIP
+  GET  /aiangel/pull.py       the standalone sync script (pull.py)
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
 import os
 import queue
 import threading
@@ -19,7 +27,7 @@ import folder_paths
 from aiohttp import web
 from server import PromptServer
 
-from . import fetch
+from . import fetch, outputs
 
 WEB_DIRECTORY = "./web"
 NODE_CLASS_MAPPINGS: dict = {}
@@ -142,3 +150,57 @@ async def start_download(request: web.Request) -> web.Response:
     for job in queued:
         _queue.put(job)
     return web.json_response({"queued": len(queued)})
+
+
+def _output_dir() -> Path:
+    return Path(folder_paths.get_output_directory())
+
+
+@routes.get("/aiangel/outputs")
+async def list_outputs(request: web.Request) -> web.Response:
+    files = await asyncio.to_thread(outputs.list_outputs, _output_dir())
+    return web.json_response({"files": files, "output_dir": str(_output_dir())})
+
+
+@routes.post("/aiangel/outputs/zip")
+async def zip_outputs(request: web.Request) -> web.StreamResponse:
+    if request.content_type == "application/json":
+        raw = (await request.json()).get("files")
+    else:
+        raw = (await request.post()).get("files")
+    root = _output_dir()
+    try:
+        rels = json.loads(raw) if isinstance(raw, str) and raw.strip() else (raw or [])
+        if not rels:
+            rels = [f["path"] for f in await asyncio.to_thread(outputs.list_outputs, root)]
+        files = outputs.safe_files(root, [str(r) for r in rels])
+    except ValueError as e:  # json.JSONDecodeError is a ValueError too
+        return web.json_response({"error": str(e)}, status=400)
+    if not files:
+        return web.json_response({"error": "no output files yet"}, status=404)
+
+    resp = web.StreamResponse(
+        headers={
+            "Content-Type": "application/zip",
+            "Content-Disposition": f'attachment; filename="{outputs.zip_name()}"',
+            "Cache-Control": "no-store",
+        }
+    )
+    await resp.prepare(request)
+    chunks = outputs.zip_chunks(files)
+    while (chunk := await asyncio.to_thread(next, chunks, None)) is not None:
+        if chunk:
+            await resp.write(chunk)
+    await resp.write_eof()
+    return resp
+
+
+@routes.get("/aiangel/pull.py")
+async def pull_script(request: web.Request) -> web.FileResponse:
+    return web.FileResponse(
+        Path(__file__).with_name("pull.py"),
+        headers={
+            "Content-Type": "text/x-python; charset=utf-8",
+            "Content-Disposition": 'attachment; filename="pull.py"',
+        },
+    )
