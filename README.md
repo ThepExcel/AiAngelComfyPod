@@ -28,7 +28,7 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
    | Variable | Example | Meaning |
    |---|---|---|
-   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `nsfw` = adult kit, see below) |
+   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 49 GB, `h3extra` ≈ 43 GB more, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `nsfw` = adult kit, see below) |
    | `EXTRA_MODELS` | *(links, see below)* | any other Civitai / Hugging Face models to download on boot |
    | `CIVITAI_TOKEN` | *(your Civitai API key)* | needed for Civitai downloads; also fills Model Manager's key |
    | `HF_TOKEN` | *(your token)* | only needed for gated Hugging Face files; also fills Model Manager's key |
@@ -173,6 +173,33 @@ Second test (RTX 5090, pod disk without a network volume, 2026-09-14):
 - Switching between H3 and SCAIL-2 unloads the other model — batch your jobs by model.
 - The first job after a boot spends about 1.5 minutes loading the model; later jobs are fast.
 - Don't use `--highvram` / `--gpu-only` with H3: its weights are larger than 32 GB of VRAM.
+
+## H3 speed & quality kit
+
+Nodes from two community MiniMax H3 workflows, baked into the image (`custom_nodes.baked`):
+
+- **`comfyui-mainodes`** — temporal "de-rope" nodes for smoother H3 motion: `H3TimeSmear`,
+  `H3V2VInit`, `H3InjectSchedule`, `H3JerkOracle`, `H3ExactRecover`.
+- **`comfyui-spectrum-minimax-h3`** — `SpectrumApplyMiniMaxH3`, a spectral feature forecaster
+  that skips selected H3 transformer steps for a sampling speedup.
+- **`whatdreamscost-comfyui`** — `LoadVideoUI` / `LoadAudioUI`, trim video or audio clips right
+  in the node instead of pre-cutting them.
+- **`comfyui-h3-prompt-ide`** — a VS Code-style prompt editor and reference palette for H3
+  prompts.
+
+`MODELS=h3` now downloads a **hybrid fl2va+ref2va model** (`smhfacct/Minimax-H3-fl2va-ref2va-hybrid-models`,
+the *b25-49* variant) instead of the plain `ref2va` checkpoint: it keeps `fl2va`'s higher output
+quality while adding `ref2va`'s reference-conditioning pathway, so one model does both
+first/last-frame and reference-video generation. It comes with the int8 video VAE (faster
+encode/decode) plus the fp16 VAE that ComfyUI's built-in H3 templates ask for, and both the fl2v
+and ref2v 4-step turbo LoRAs. In ComfyUI's own H3 templates, pick the hybrid file in the
+diffusion model loader. `MODELS=h3extra` adds the *b20-49* variant (closer to `ref2va`, for
+stronger reference adherence), the 8-step fl2v turbo LoRA, the `taeh3` preview VAE, and the
+original plain `ref2va` checkpoint, for comparing.
+
+Left out: a neural latent-upscaler node (`Comfyui_Minimax_h3_latent_Upscaler`) from the same
+workflows — its GitHub repo ships no LICENSE file, so it can't be redistributed in this public
+image; its paired model was left out too since the node that would use it isn't here.
 
 ## Build
 

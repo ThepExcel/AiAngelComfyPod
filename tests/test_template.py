@@ -20,10 +20,13 @@ KNOWN_SUBDIRS = {
     "loras",
     "text_encoders",
     "vae",
+    "vae_approx",
     "upscale_models",
     "controlnet",
     "embeddings",
 }
+# Every custom node pack baked into custom_nodes.baked, pinned by a commit SHA + sha256 ARG pair.
+BAKED_NODE_PACKS = {"KREA2EDIT", "MAINODES", "SPECTRUM", "WDC", "H3PROMPTIDE"}
 
 
 def preset_rows():
@@ -85,6 +88,19 @@ def test_nsfw_kit_is_a_valid_model_list():
 def test_start_sh_strips_nsfw_from_presets():
     text = (ROOT / "docker" / "start.sh").read_text(encoding="utf-8")
     assert "/opt/aiangel/nsfw.txt" in text and "s/,nsfw,/,/g" in text
+
+
+def test_baked_custom_nodes_are_pinned():
+    text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    for pack in BAKED_NODE_PACKS:
+        commit = re.search(rf"ARG {pack}_COMMIT=([0-9a-f]+)", text)
+        sha256 = re.search(rf"ARG {pack}_SHA256=([0-9a-f]+)", text)
+        assert commit, f"{pack}: no ARG {pack}_COMMIT in Dockerfile"
+        assert sha256, f"{pack}: no ARG {pack}_SHA256 in Dockerfile"
+        assert len(commit.group(1)) == 40, f"{pack}: COMMIT is not a full 40-char SHA"
+        assert len(sha256.group(1)) == 64, f"{pack}: SHA256 is not a full 64-char digest"
+        assert f"{{{pack}_COMMIT}}" in text, f"{pack}: COMMIT ARG never referenced"
+        assert f"{{{pack}_SHA256}}" in text, f"{pack}: SHA256 ARG never referenced"
 
 
 def test_shell_scripts_use_lf_line_endings():
