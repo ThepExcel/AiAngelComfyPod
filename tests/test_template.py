@@ -65,6 +65,28 @@ def test_no_secrets_or_private_paths_in_image_files():
         assert "D:/" not in text and "C:\\" not in text, f"{path.name}: local Windows path"
 
 
+def test_nsfw_kit_is_a_valid_model_list():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "fetch_for_kit", ROOT / "nodes" / "ComfyUI-AiAngel" / "fetch.py"
+    )
+    fetch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fetch)
+    entries = fetch.parse_entries((ROOT / "presets" / "nsfw.txt").read_text(encoding="utf-8"))
+    assert len(entries) >= 5
+    for folder, url, _ in entries:
+        assert folder in KNOWN_SUBDIRS, url
+        host = urlparse(url).hostname
+        assert host in {"civitai.red", "civitai.com", "huggingface.co"}, url
+        assert host == "huggingface.co" or "modelVersionId=" in url, f"pin a version: {url}"
+
+
+def test_start_sh_strips_nsfw_from_presets():
+    text = (ROOT / "docker" / "start.sh").read_text(encoding="utf-8")
+    assert "/opt/aiangel/nsfw.txt" in text and "s/,nsfw,/,/g" in text
+
+
 def test_shell_scripts_use_lf_line_endings():
     for path in (ROOT / "docker").glob("*.sh"):
         assert b"\r" not in path.read_bytes(), f"{path.name} has CRLF; bash in the container breaks"

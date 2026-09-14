@@ -152,6 +152,16 @@ async def start_download(request: web.Request) -> web.Response:
     return web.json_response({"queued": len(queued)})
 
 
+NSFW_KIT = Path(os.environ.get("AIANGEL_NSFW_KIT", "/opt/aiangel/nsfw.txt"))
+
+
+@routes.get("/aiangel/kit/nsfw")
+async def nsfw_kit(request: web.Request) -> web.Response:
+    if not NSFW_KIT.is_file():
+        return web.json_response({"error": "no NSFW kit in this image"}, status=404)
+    return web.json_response({"text": NSFW_KIT.read_text(encoding="utf-8")})
+
+
 def _output_dir() -> Path:
     return Path(folder_paths.get_output_directory())
 

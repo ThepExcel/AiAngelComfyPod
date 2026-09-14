@@ -39,7 +39,18 @@ RUN curl -fSL "https://github.com/hayden-cn/ComfyUI-Model-Manager/releases/downl
     && echo "MODEL_MANAGER_VERSION=${MODEL_MANAGER_VERSION}" >> /opt/comfyui/.runpod-bundle-version \
     && mv /opt/comfyui/custom_nodes /opt/comfyui/custom_nodes.baked
 
+# Krea 2 Identity Edit nodes (Apache-2.0): instruction image edits that keep a person's face.
+ARG KREA2EDIT_COMMIT=86f886dac23013d88996e3a2e99093ba44d322fb
+ARG KREA2EDIT_SHA256=de43b5529a916a3bdca0bcebe9420a314f2ee0f8c55603a5c419fdd62be57a17
+RUN curl -fSL "https://github.com/lbouaraba/comfyui-krea2edit/archive/${KREA2EDIT_COMMIT}.tar.gz" -o /tmp/k2e.tar.gz \
+    && echo "${KREA2EDIT_SHA256}  /tmp/k2e.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/comfyui/custom_nodes.baked/comfyui-krea2edit \
+    && tar xzf /tmp/k2e.tar.gz --strip-components=1 -C /opt/comfyui/custom_nodes.baked/comfyui-krea2edit \
+    && rm /tmp/k2e.tar.gz \
+    && echo "KREA2EDIT_COMMIT=${KREA2EDIT_COMMIT}" >> /opt/comfyui/.runpod-bundle-version
+
 COPY presets/models.tsv /opt/aiangel/models.tsv
+COPY presets/nsfw.txt /opt/aiangel/nsfw.txt
 COPY docker/start.sh /opt/aiangel/start.sh
 COPY docker/download_models.sh /opt/aiangel/download_models.sh
 COPY docker/seed_model_manager_keys.py /opt/aiangel/

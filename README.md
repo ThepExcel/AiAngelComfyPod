@@ -28,7 +28,7 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
    | Variable | Example | Meaning |
    |---|---|---|
-   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `scail` ≈ 29 GB, `krea2` ≈ 19 GB) |
+   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `nsfw` = adult kit, see below) |
    | `EXTRA_MODELS` | *(links, see below)* | any other Civitai / Hugging Face models to download on boot |
    | `CIVITAI_TOKEN` | *(your Civitai API key)* | needed for Civitai downloads; also fills Model Manager's key |
    | `HF_TOKEN` | *(your token)* | only needed for gated Hugging Face files; also fills Model Manager's key |
@@ -74,6 +74,21 @@ vae|https://huggingface.co/some-org/some-repo/resolve/main/file.safetensors
 - Files already on the volume at the right size are skipped, so pasting the same list again is safe.
 - The same list works at boot: put it in the `EXTRA_MODELS` variable, with your key in a RunPod
   secret (`CIVITAI_TOKEN={{ RUNPOD_SECRET_civitai }}`). Progress is in `logs/models.log`.
+
+## NSFW kit (adults 18+)
+
+`MODELS=h3,krea2,nsfw` (with `CIVITAI_TOKEN` set) also downloads a curated adult kit on boot, or
+press **Load NSFW kit (18+)** in the Model list panel and then **Download all**. The list is
+`presets/nsfw.txt`:
+
+- **MiniMax H3 video:** Mystic XXX LoRA (our default: strength 0.8 on the normal H3 model with the
+  4-step turbo LoRA), H3 Eros Max (full model), Motion Booster, H3 Turbo v4 and VBVR reasoning LoRAs.
+- **Krea 2 images:** PornMaster Krea2 (uncensored UNet), Krea 2 Identity Edit LoRA (edit a photo
+  and keep the person's face; the `comfyui-krea2edit` nodes are in the image), POV Blowjob,
+  Mystic XXX and SNOFS LoRAs.
+
+Only generate adults, and only people who agreed to it. You are responsible for following
+RunPod's and Civitai's terms.
 
 ## Get your results out (Outputs panel)
 

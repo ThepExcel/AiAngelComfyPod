@@ -121,6 +121,16 @@ echo "  (stored in $SECRETS; set FILEBROWSER_PASSWORD / JUPYTER_PASSWORD to choo
 echo "================================================================"
 
 # ---- model presets download in the background; ComfyUI does not wait for them
+# "nsfw" is not a models.tsv preset: it adds the Civitai list in /opt/aiangel/nsfw.txt to EXTRA_MODELS.
+case ",${MODELS// /}," in
+    *,nsfw,*)
+        MODELS=$(echo ",${MODELS// /}," | sed 's/,nsfw,/,/g; s/^,//; s/,$//')
+        EXTRA_MODELS="$(cat /opt/aiangel/nsfw.txt)
+${EXTRA_MODELS:-}"
+        export EXTRA_MODELS
+        [ -n "${CIVITAI_TOKEN:-}" ] || stamp "WARNING: MODELS=nsfw needs CIVITAI_TOKEN (Civitai API key); set it or use the Model list panel"
+        ;;
+esac
 if [ -n "${MODELS:-}" ] || [ -n "${EXTRA_MODELS:-}" ]; then
     (
         [ -n "${MODELS:-}" ] && /opt/aiangel/download_models.sh "$MODELS"

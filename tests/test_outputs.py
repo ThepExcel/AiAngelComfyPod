@@ -115,6 +115,7 @@ def pod(tmp_path, monkeypatch):
     )
     monkeypatch.setitem(sys.modules, "server", server_stub)
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("AIANGEL_NSFW_KIT", str(ROOT / "presets" / "nsfw.txt"))
     load("ComfyUI_AiAngel", NODE / "__init__.py", package=True)
 
     @routes.get("/view")
@@ -198,6 +199,13 @@ def test_pull_syncs_skips_and_resumes(pod, tmp_path, capsys):
     assert pull.fetch_one(base, entry, dest) == ("done", len(body) - 1000)
     assert vid.read_bytes() == body
     assert not vid.with_name(vid.name + ".part").exists()
+
+
+def test_nsfw_kit_route_serves_the_list(pod):
+    base, _ = pod
+    with urllib.request.urlopen(base + "/aiangel/kit/nsfw", timeout=10) as r:
+        text = json.load(r)["text"]
+    assert text == (ROOT / "presets" / "nsfw.txt").read_text(encoding="utf-8")
 
 
 def test_pull_refuses_unsafe_server_paths(tmp_path):

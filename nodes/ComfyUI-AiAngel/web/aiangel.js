@@ -63,6 +63,14 @@ function render(container) {
     refresh();
   }
 
+  async function loadNsfwKit() {
+    const res = await api.fetchApi("/aiangel/kit/nsfw");
+    const data = await res.json();
+    if (!res.ok) { message.textContent = data.error; return; }
+    list.value = data.text + (list.value.trim() ? `\n${list.value}` : "");
+    message.textContent = "NSFW kit loaded (needs the h3 and krea2 presets and your Civitai key). Press Download all.";
+  }
+
   async function refresh() {
     if (!container.isConnected) return;
     let data;
@@ -97,9 +105,12 @@ function render(container) {
       "Paste a list of model links and download them all at once. Your keys stay on this pod."),
     civitai, hf,
     list,
-    el("div", { style: { display: "flex", gap: "8px" } },
+    el("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
       el("button", { style: buttonStyle, onclick: download }, "Download all"),
-      el("button", { style: buttonStyle, onclick: saveKeys }, "Save keys only")),
+      el("button", { style: buttonStyle, onclick: saveKeys }, "Save keys only"),
+      el("button", { style: buttonStyle, onclick: loadNsfwKit,
+        title: "Adults 18+ only. Fills the list with the image's NSFW kit (H3 + Krea 2); press Download all after." },
+        "Load NSFW kit (18+)")),
     message, keyNote, jobs));
 
   refresh();
