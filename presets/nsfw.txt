@@ -2,10 +2,13 @@
 # Needs the h3 and krea2 presets (text encoders + VAEs) and a Civitai API key (CIVITAI_TOKEN).
 # MiniMax H3 video
 loras|https://civitai.red/models/2856467/mmh3-mystic-xxx?modelVersionId=3266628
-diffusion_models|https://civitai.red/models/2851079/h3-eros-max?modelVersionId=3294059
+# 10Eros Max beta5 TURBO-hybrid int8: the author's recommended file (turbo merged in: no turbo LoRA,
+# concept LoRAs at 0.2-0.6, euler/simple 6 steps). The Civitai page's primary file is fp8.
+diffusion_models|https://huggingface.co/TenStrip/10Eros-Max/resolve/main/10Eros_Max_h3_TURBO-hybrid_beta5_int8.safetensors
 loras|https://civitai.red/models/2840146/faster-harder-shake-harder-or-h3-motion-boosteranime-edition-update?modelVersionId=3228867
 loras|https://civitai.red/models/2837571/minimax-h3-turbo-loras?modelVersionId=3202732
-loras|https://civitai.red/models/2497207/h3-ltx-23-i2v-t2v-video-reasoning-lora-vbvr?modelVersionId=3220766
+loras|https://civitai.red/models/2857340/hmcumshot-cumshot-lora-for-minimax-h3?modelVersionId=3238531
+loras|https://civitai.red/models/2497207/h3-ltx-23-i2v-t2v-video-reasoning-lora-vbvr?modelVersionId=3306139
 # Krea 2 images: uncensored UNet, identity-preserving edit LoRA, NSFW LoRAs
 diffusion_models|https://civitai.red/models/2735032/pornmaster-krea2?modelVersionId=3119653
 loras|https://huggingface.co/conradlocke/krea2-identity-edit/resolve/main/krea2_identity_edit_v1_2.safetensors
