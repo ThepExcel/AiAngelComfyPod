@@ -8,7 +8,9 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
 ## What you get
 
-- **ComfyUI v0.35.0**, CUDA 12.8, PyTorch — works on RTX 5090 (Blackwell) and older cards.
+- **ComfyUI v0.35.0**, PyTorch — works on RTX 5090 (Blackwell) and older cards. Two images:
+  `:cuda12.8` (= `:latest`, runs on any current host) and `:cuda13.0` (needs a host driver with
+  CUDA 13 — pick the CUDA 13.0 filter when you deploy).
 - **Fast boots.** ComfyUI and all Python packages are inside the image, not on your network
   volume, so a restart does not re-install or re-import anything from slow storage. Only your
   models, inputs, outputs, settings and custom nodes live on the volume.
