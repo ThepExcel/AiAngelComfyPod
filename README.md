@@ -117,6 +117,15 @@ re-installed on each new container (cached on the volume, so it is quick).
 | MiniMax H3, reference image, 5 s 512×896, 4 steps — first job after boot | 230 s |
 | Same, next job (model warm) | 38 s |
 
+Second test (RTX 5090, pod disk without a network volume, 2026-09-14):
+
+| Step | Time |
+|---|---|
+| First boot on a new host (includes pulling the image) | 810 s — image pull time varies a lot by host |
+| `MODELS=krea2` from Hugging Face (19 GB) | 561 s |
+| A 14 GB Krea 2 finetune from Civitai via the Model list panel | a few minutes |
+| Krea 2 image 768×1344, 8 steps — first / next | 20 s / 12 s |
+
 ## Tips for H3 and SCAIL-2
 
 - Switching between H3 and SCAIL-2 unloads the other model — batch your jobs by model.

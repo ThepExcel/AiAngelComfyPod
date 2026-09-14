@@ -73,11 +73,22 @@ def _worker() -> None:
 threading.Thread(target=_worker, name="aiangel-downloads", daemon=True).start()
 
 
+def _written_bytes(path: Path) -> int:
+    """Bytes actually on disk. aria2c writes 16 segments at their own offsets, so the file length
+    jumps near the end early (measured on a pod: 13.8 of 14.1 GB shown minutes before it finished);
+    allocated blocks track what has really been written."""
+    if not path.exists():
+        return 0
+    st = path.stat()
+    blocks = getattr(st, "st_blocks", None)
+    return min(st.st_size, blocks * 512) if blocks else st.st_size
+
+
 def _job_view(job: dict) -> dict:
     view = {k: job.get(k) for k in ("id", "url", "state", "folder", "name", "size", "message")}
     if job.get("state") == "downloading" and job.get("name"):
         part = fetch.partial_path(job, _models_dir())
-        view["done_bytes"] = part.stat().st_size if part.exists() else 0
+        view["done_bytes"] = _written_bytes(part)
     elif job.get("state") == "done":
         view["done_bytes"] = job.get("size") or 0
     return view
