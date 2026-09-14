@@ -30,7 +30,7 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
    | Variable | Example | Meaning |
    |---|---|---|
-   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 49 GB, `h3extra` ≈ 43 GB more, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `nsfw` = adult kit, see below) |
+   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 49 GB, `h3extra` ≈ 43 GB more, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `h3upscaler` ≈ 690 MB, `nsfw` = adult kit, see below) |
    | `EXTRA_MODELS` | *(links, see below)* | any other Civitai / Hugging Face models to download on boot |
    | `CIVITAI_TOKEN` | *(your Civitai API key)* | needed for Civitai downloads; also fills Model Manager's key |
    | `HF_TOKEN` | *(your token)* | only needed for gated Hugging Face files; also fills Model Manager's key |
@@ -178,7 +178,8 @@ Second test (RTX 5090, pod disk without a network volume, 2026-09-14):
 
 ## H3 speed & quality kit
 
-Nodes from two community MiniMax H3 workflows, baked into the image (`custom_nodes.baked`):
+Nodes from two community MiniMax H3 workflows (H3 Advanced v20, SEEDHUNTER v16), baked into the
+image (`custom_nodes.baked`):
 
 - **`comfyui-mainodes`** — temporal "de-rope" nodes for smoother H3 motion: `H3TimeSmear`,
   `H3V2VInit`, `H3InjectSchedule`, `H3JerkOracle`, `H3ExactRecover`.
@@ -188,6 +189,17 @@ Nodes from two community MiniMax H3 workflows, baked into the image (`custom_nod
   in the node instead of pre-cutting them.
 - **`comfyui-h3-prompt-ide`** — a VS Code-style prompt editor and reference palette for H3
   prompts.
+- **`rgthree-comfy`** — power/context nodes, reroute and group utilities, an image comparer;
+  general workflow wiring both H3 workflows above lean on.
+- **`comfyui-easy-use`** — the "easy ..." pipe/loader/sampler nodes for compact prompt and
+  sampler setup.
+- **`comfyui-videohelpersuite`** — `VHS_LoadVideo`, `VHS_VideoCombine` and the rest of the video
+  I/O both workflows build on.
+- **`comfyui-obvpm`** — `Load Image & Crop`, plus lazy switches, gates and bundles that keep the
+  large H3 graphs tidy.
+- **`comfyui-solattn_triton`** — a Triton sparse-attention override for faster H3 sampling; if
+  the image's triton build does not match, the node reports it clearly on use rather than
+  failing to load.
 
 `MODELS=h3` now downloads a **hybrid fl2va+ref2va model** (`smhfacct/Minimax-H3-fl2va-ref2va-hybrid-models`,
 the *b25-49* variant) instead of the plain `ref2va` checkpoint: it keeps `fl2va`'s higher output
@@ -199,9 +211,13 @@ diffusion model loader. `MODELS=h3extra` adds the *b20-49* variant (closer to `r
 stronger reference adherence), the 8-step fl2v turbo LoRA, the `taeh3` preview VAE, and the
 original plain `ref2va` checkpoint, for comparing.
 
-Left out: a neural latent-upscaler node (`Comfyui_Minimax_h3_latent_Upscaler`) from the same
-workflows — its GitHub repo ships no LICENSE file, so it can't be redistributed in this public
-image; its paired model was left out too since the node that would use it isn't here.
+Left out of the image: a neural latent-upscaler node (`Comfyui_Minimax_h3_latent_Upscaler`) from
+the same workflows — its GitHub repo ships no LICENSE file, so it can't be redistributed here.
+It is opt-in instead: `MODELS=h3,h3upscaler` (or add `h3upscaler` to your MODELS list) fetches
+the node's code straight from GitHub at a pinned commit onto your own pod's volume, and its
+model file (`minimax_h3_latent_upscaler_3d_bf16.safetensors`, ≈ 690 MB, from
+`LBH-123-AI/Minimax_h3_latent_Upscaler` on Hugging Face) the same way any other preset
+downloads. Restart the pod after adding it the first time so ComfyUI picks up the new node.
 
 ## Build
 

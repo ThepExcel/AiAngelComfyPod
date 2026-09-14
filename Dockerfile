@@ -11,6 +11,9 @@
 #     (checkpoint, LoRA, VAE, ...). Each user enters their own API tokens in its settings.
 #   - First boot downloads the model presets named in MODELS (e.g. MODELS=h3,scail),
 #     skipping any file already on the volume at the exact byte size.
+#   - Baked custom-node packs (rgthree-comfy, ComfyUI-Easy-Use, ComfyUI-VideoHelperSuite,
+#     comfyui-obvpm, ComfyUI-SolAttn_triton, on top of the H3 speed/quality kit below) so the
+#     community H3 Advanced v20 and SEEDHUNTER v16 workflows load without missing nodes.
 ARG BASE_IMAGE=runpod/comfyui:1.3.0-rc.164-comfyuiv0.35.0-cuda12.8@sha256:f070f97750ed4a3abdcad5fa9491eb327addac5226b135d0c76910335e11b364
 FROM ${BASE_IMAGE}
 
@@ -95,6 +98,69 @@ RUN curl -fSL "https://github.com/ethanfel/ComfyUI-H3-Prompt-IDE/archive/${H3PRO
     && tar xzf /tmp/h3promptide.tar.gz --strip-components=1 -C /opt/comfyui/custom_nodes.baked/comfyui-h3-prompt-ide \
     && rm /tmp/h3promptide.tar.gz \
     && echo "H3PROMPTIDE_COMMIT=${H3PROMPTIDE_COMMIT}" >> /opt/comfyui/.runpod-bundle-version
+
+# Workflow-utility packs the two community H3 workflows (H3 Advanced v20, SEEDHUNTER v16) need
+# and currently show as missing nodes.
+
+# rgthree-comfy (MIT): power/context nodes, reroute+group utilities and an image comparer used
+# to wire the H3 workflows above compactly. No requirements.txt (pure Python).
+ARG RGTHREE_COMMIT=2c5342a8cb0eaecaabf61435a5f37dd594c510ba
+ARG RGTHREE_SHA256=a4daad50745ed96f04eccb6d41b34d2aef4787c47f72234f6bb5df9186f57336
+RUN curl -fSL "https://github.com/rgthree/rgthree-comfy/archive/${RGTHREE_COMMIT}.tar.gz" -o /tmp/rgthree.tar.gz \
+    && echo "${RGTHREE_SHA256}  /tmp/rgthree.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/comfyui/custom_nodes.baked/rgthree-comfy \
+    && tar xzf /tmp/rgthree.tar.gz --strip-components=1 -C /opt/comfyui/custom_nodes.baked/rgthree-comfy \
+    && rm /tmp/rgthree.tar.gz \
+    && echo "RGTHREE_COMMIT=${RGTHREE_COMMIT}" >> /opt/comfyui/.runpod-bundle-version
+
+# ComfyUI-Easy-Use (GPL-3.0): the "easy ..." pipe/loader/sampler nodes the H3 workflows above
+# wire through for compact prompt/sampler setup.
+ARG EASYUSE_COMMIT=450b1ce4ce43b2280521c87f5fa388a898fb2ad2
+ARG EASYUSE_SHA256=c06a44b7d1e1b581b117caada5d6c57c0c4a864e574e40bec387549d236c87fb
+RUN curl -fSL "https://github.com/yolain/ComfyUI-Easy-Use/archive/${EASYUSE_COMMIT}.tar.gz" -o /tmp/easyuse.tar.gz \
+    && echo "${EASYUSE_SHA256}  /tmp/easyuse.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/comfyui/custom_nodes.baked/comfyui-easy-use \
+    && tar xzf /tmp/easyuse.tar.gz --strip-components=1 -C /opt/comfyui/custom_nodes.baked/comfyui-easy-use \
+    && rm /tmp/easyuse.tar.gz \
+    && python3.12 -m pip install --no-cache-dir -c /opt/comfyui-runtime-constraints.txt \
+        -r /opt/comfyui/custom_nodes.baked/comfyui-easy-use/requirements.txt \
+    && echo "EASYUSE_COMMIT=${EASYUSE_COMMIT}" >> /opt/comfyui/.runpod-bundle-version
+
+# ComfyUI-VideoHelperSuite (GPL-3.0): VHS_LoadVideo / VHS_VideoCombine and friends, the video
+# I/O the H3 workflows above build on.
+ARG VHS_COMMIT=4d907bee61e92c2e65af3bd6383a4e4d356126d1
+ARG VHS_SHA256=29122f96ac6d43b14b1b15c758e1c4ac292fe226e6c156b71bd17fe272c4cc58
+RUN curl -fSL "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite/archive/${VHS_COMMIT}.tar.gz" -o /tmp/vhs.tar.gz \
+    && echo "${VHS_SHA256}  /tmp/vhs.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/comfyui/custom_nodes.baked/comfyui-videohelpersuite \
+    && tar xzf /tmp/vhs.tar.gz --strip-components=1 -C /opt/comfyui/custom_nodes.baked/comfyui-videohelpersuite \
+    && rm /tmp/vhs.tar.gz \
+    && python3.12 -m pip install --no-cache-dir -c /opt/comfyui-runtime-constraints.txt \
+        -r /opt/comfyui/custom_nodes.baked/comfyui-videohelpersuite/requirements.txt \
+    && echo "VHS_COMMIT=${VHS_COMMIT}" >> /opt/comfyui/.runpod-bundle-version
+
+# comfyui-obvpm (GPL-3.0): LoadImageCrop plus lazy switches/gates/bundles the H3 workflows above
+# use to keep large graphs tidy. No requirements.txt (pure Python).
+ARG OBVPM_COMMIT=9c2d1a2d7547e472c24b772125c0da86e4d821bd
+ARG OBVPM_SHA256=e9f01a2efb6322fdf49e468efb60b6ddc23a5e5413e66556f36bb7789f0c9ce6
+RUN curl -fSL "https://github.com/obvpm/comfyui-obvpm/archive/${OBVPM_COMMIT}.tar.gz" -o /tmp/obvpm.tar.gz \
+    && echo "${OBVPM_SHA256}  /tmp/obvpm.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/comfyui/custom_nodes.baked/comfyui-obvpm \
+    && tar xzf /tmp/obvpm.tar.gz --strip-components=1 -C /opt/comfyui/custom_nodes.baked/comfyui-obvpm \
+    && rm /tmp/obvpm.tar.gz \
+    && echo "OBVPM_COMMIT=${OBVPM_COMMIT}" >> /opt/comfyui/.runpod-bundle-version
+
+# ComfyUI-SolAttn_triton (Apache-2.0): a Triton sparse-attention override for MiniMax H3
+# sampling speed. No requirements.txt; its kernel import is wrapped in try/except so a missing
+# or mismatched triton degrades to a clear error on use, never a crash on load.
+ARG SOLATTN_COMMIT=26d816ebd4f1e43a2c6e4d4759be3137f10a7a73
+ARG SOLATTN_SHA256=a667ebd1ee749d49395dd149d93c331e6889c807291a6088a4224860729ee2f4
+RUN curl -fSL "https://github.com/kijai/ComfyUI-SolAttn_triton/archive/${SOLATTN_COMMIT}.tar.gz" -o /tmp/solattn.tar.gz \
+    && echo "${SOLATTN_SHA256}  /tmp/solattn.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/comfyui/custom_nodes.baked/comfyui-solattn_triton \
+    && tar xzf /tmp/solattn.tar.gz --strip-components=1 -C /opt/comfyui/custom_nodes.baked/comfyui-solattn_triton \
+    && rm /tmp/solattn.tar.gz \
+    && echo "SOLATTN_COMMIT=${SOLATTN_COMMIT}" >> /opt/comfyui/.runpod-bundle-version
 
 COPY presets/models.tsv /opt/aiangel/models.tsv
 COPY presets/nsfw.txt /opt/aiangel/nsfw.txt

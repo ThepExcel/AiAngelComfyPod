@@ -57,7 +57,7 @@ if ! cmp -s "$BUNDLE" "$DATA_DIR/custom_nodes/.aiangel-bundle-version"; then
     for node in "$BAKED_NODES"/*/; do
         name=$(basename "$node")
         mkdir -p "$DATA_DIR/custom_nodes/$name"
-        rsync -a --delete --exclude=private.key "$node" "$DATA_DIR/custom_nodes/$name/"
+        rsync -a --delete --exclude=private.key --exclude=rgthree_config.json "$node" "$DATA_DIR/custom_nodes/$name/"
     done
     rsync -a --exclude="*/" "$BAKED_NODES/" "$DATA_DIR/custom_nodes/"
     cp "$BUNDLE" "$DATA_DIR/custom_nodes/.aiangel-bundle-version"
@@ -67,6 +67,24 @@ rm -rf "$COMFY/custom_nodes"
 ln -sfn "$DATA_DIR/custom_nodes" "$COMFY/custom_nodes"
 python3.12 /opt/aiangel/seed_model_manager_keys.py \
     "$DATA_DIR/custom_nodes/ComfyUI-Model-Manager/private.key" || true
+
+# H3 latent upscaler node: its repo ships no LICENSE file, so unlike the packs above it is never
+# baked into the image. MODELS=...,h3upscaler both fetches this node's code (pinned commit, here)
+# and its model file (a normal models.tsv preset, below).
+case ",${MODELS// /}," in
+    *,h3upscaler,*)
+        UPSCALER_COMMIT=d7c01b9011f2e8439493f6c02c29995a27df276f
+        UPSCALER_DIR="$DATA_DIR/custom_nodes/comfyui-minimax-h3-latent-upscaler"
+        if [ ! -d "$UPSCALER_DIR" ]; then
+            stamp "fetching H3 latent upscaler node $UPSCALER_COMMIT (no LICENSE, not baked in the image)"
+            curl -fsSL "https://github.com/LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler/archive/$UPSCALER_COMMIT.tar.gz" -o /tmp/h3upscaler.tar.gz \
+                && mkdir -p "$UPSCALER_DIR" \
+                && tar xzf /tmp/h3upscaler.tar.gz --strip-components=1 -C "$UPSCALER_DIR" \
+                && rm -f /tmp/h3upscaler.tar.gz \
+                || stamp "WARNING: H3 latent upscaler node fetch failed"
+        fi
+        ;;
+esac
 
 # Python packages live in the image, so a user-installed node needs its requirements again on
 # every fresh container. The pip cache on the volume keeps that quick.

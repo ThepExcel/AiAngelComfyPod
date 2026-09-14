@@ -24,9 +24,21 @@ KNOWN_SUBDIRS = {
     "upscale_models",
     "controlnet",
     "embeddings",
+    "latent_upscale_models",
 }
 # Every custom node pack baked into custom_nodes.baked, pinned by a commit SHA + sha256 ARG pair.
-BAKED_NODE_PACKS = {"KREA2EDIT", "MAINODES", "SPECTRUM", "WDC", "H3PROMPTIDE"}
+BAKED_NODE_PACKS = {
+    "KREA2EDIT",
+    "MAINODES",
+    "SPECTRUM",
+    "WDC",
+    "H3PROMPTIDE",
+    "RGTHREE",
+    "EASYUSE",
+    "VHS",
+    "OBVPM",
+    "SOLATTN",
+}
 
 
 def preset_rows():
@@ -88,6 +100,20 @@ def test_nsfw_kit_is_a_valid_model_list():
 def test_start_sh_strips_nsfw_from_presets():
     text = (ROOT / "docker" / "start.sh").read_text(encoding="utf-8")
     assert "/opt/aiangel/nsfw.txt" in text and "s/,nsfw,/,/g" in text
+
+
+def test_start_sh_fetches_h3_upscaler_opt_in():
+    text = (ROOT / "docker" / "start.sh").read_text(encoding="utf-8")
+    assert ",h3upscaler,*)" in text
+    assert "LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler" in text
+    presets = {row[1] for row in preset_rows()}
+    assert "h3upscaler" in presets
+
+
+def test_h3_upscaler_node_is_never_baked():
+    text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "Comfyui_Minimax_h3_latent_Upscaler" not in text
+    assert "LBH-123-AI" not in text
 
 
 def test_baked_custom_nodes_are_pinned():
