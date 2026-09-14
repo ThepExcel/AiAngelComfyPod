@@ -84,7 +84,10 @@ press **Load NSFW kit (18+)** in the Model list panel and then **Download all**.
 `presets/nsfw.txt`:
 
 - **MiniMax H3 video:** Mystic XXX LoRA (our default: strength 0.8 on the normal H3 model with the
-  4-step turbo LoRA), H3 Eros Max (full model), Motion Booster, H3 Turbo v4 and VBVR reasoning LoRAs.
+  4-step turbo LoRA), 10Eros Max beta5 TURBO-hybrid int8 (full model with turbo merged in: leave
+  the turbo LoRA out, concept LoRAs at 0.2-0.6, euler/simple 6 steps), HMCumshot (author's R2V
+  setting: turbo 0.85, strength 0.9, euler/beta, trigger `hmcumshot3`), Motion Booster, H3 Turbo v4
+  and VBVR Pro reasoning LoRAs.
 - **Krea 2 images:** PornMaster Krea2 (uncensored UNet), Krea 2 Identity Edit LoRA (edit a photo
   and keep the person's face; the `comfyui-krea2edit` nodes are in the image), POV Blowjob,
   Mystic XXX and SNOFS LoRAs.
@@ -176,6 +179,19 @@ Second test (RTX 5090, pod disk without a network volume, 2026-09-14):
 - The first job after a boot spends about 1.5 minutes loading the model; later jobs are fast.
 - Don't use `--highvram` / `--gpu-only` with H3: its weights are larger than 32 GB of VRAM.
 
+## AiAngel H3 workflows
+
+Open ComfyUI's **Templates** browser → *ComfyUI-AiAngel*:
+
+- **AiAngel H3 - Clip** — reference-to-video from `<Picture 1>` and a structured prompt, 2-15 s.
+- **AiAngel H3 - Extend** — continues a previous H3 clip without a cut: its last 22 frames and
+  their sound anchor the new part, the overlap is cross-faded, and the saved video is previous +
+  new. Feed the result back in to keep going past 15 s.
+
+Both use only ComfyUI core nodes, the `h3` preset, the 4-step turbo LoRA and Comfy Kitchen
+attention. On an RTX PRO 6000 a 5 s 576×1024 clip takes about 42 s (46 s without Kitchen
+attention), a 15 s clip about 141 s, and extending a 5 s clip by 5 s about 62 s.
+
 ## H3 speed & quality kit
 
 Nodes from two community MiniMax H3 workflows (H3 Advanced v20, SEEDHUNTER v16), baked into the
@@ -204,8 +220,9 @@ image (`custom_nodes.baked`):
 `MODELS=h3` now downloads a **hybrid fl2va+ref2va model** (`smhfacct/Minimax-H3-fl2va-ref2va-hybrid-models`,
 the *b25-49* variant) instead of the plain `ref2va` checkpoint: it keeps `fl2va`'s higher output
 quality while adding `ref2va`'s reference-conditioning pathway, so one model does both
-first/last-frame and reference-video generation. It comes with the int8 video VAE (faster
-encode/decode) plus the fp16 VAE that ComfyUI's built-in H3 templates ask for, and both the fl2v
+first/last-frame and reference-video generation. It comes with the fp16 video VAE that ComfyUI's
+built-in H3 templates ask for, the int8 video VAE (slower than fp16 on CUDA 12.8 in our tests —
+community workflows say it pays off on CUDA 13), and both the fl2v
 and ref2v 4-step turbo LoRAs. In ComfyUI's own H3 templates, pick the hybrid file in the
 diffusion model loader. `MODELS=h3extra` adds the *b20-49* variant (closer to `ref2va`, for
 stronger reference adherence), the 8-step fl2v turbo LoRA, the `taeh3` preview VAE, and the
