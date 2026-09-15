@@ -80,6 +80,18 @@ class FakeComfy(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/system_stats":
             return self._json(200, {"system": {}})
+        if self.path.startswith("/models/"):
+            return self._json(200, ["MysticXXX_MMH3-V4.safetensors"])
+        if self.path.startswith(
+            "/AiAngelGallery/claire-h3/resolve/main/"
+        ):  # doubles as the HF host
+            if self.headers.get("Authorization") != "Bearer hf-test":
+                return self._json(401, {})
+            data = b"lora-bytes"
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            return self.wfile.write(data)
         pid = self.path.rsplit("/", 1)[-1]
         return self._json(200, {pid: self.history[pid]} if pid in self.history else {})
 
@@ -126,6 +138,7 @@ def comfy(tmp_path, monkeypatch):
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), FakeComfy)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     monkeypatch.setattr(hd, "COMFY_URL", f"http://127.0.0.1:{srv.server_address[1]}")
+    monkeypatch.setattr(hd, "HF_BASE", f"http://127.0.0.1:{srv.server_address[1]}")
     monkeypatch.setattr(hd, "COMFY_DIR", tmp_path)
     yield hd, tmp_path
     srv.shutdown()
@@ -157,6 +170,30 @@ def test_rejected_graph_and_execution_error_fail_the_job(comfy):
         hd.run_job({"workflow": {"1": {"class_type": "SaveVideo"}}})
     with pytest.raises(ValueError):
         hd.run_job({})
+
+
+def test_missing_lora_is_fetched_from_the_endpoint_repo(comfy, monkeypatch):
+    hd, comfy_dir = comfy
+    monkeypatch.setenv("MODEL_NAME", "AiAngelGallery/claire-h3")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    graph = {
+        "1": {
+            "class_type": "LoraLoaderModelOnly",
+            "inputs": {"lora_name": "H3_Motion_BoosterV2.safetensors"},
+        },
+        "2": {
+            "class_type": "LoraLoaderModelOnly",
+            "inputs": {"lora_name": "MysticXXX_MMH3-V4.safetensors"},
+        },
+        "3": {"class_type": "SaveVideo", "inputs": {}},
+    }
+    out = hd.run_job({"workflow": graph})
+    assert out["fetched"] == [
+        "loras/H3_Motion_BoosterV2.safetensors"
+    ]  # the listed one is not re-fetched
+    assert (
+        comfy_dir / "models" / "loras" / "H3_Motion_BoosterV2.safetensors"
+    ).read_bytes() == b"lora-bytes"
 
 
 def test_oversized_output_fails_clearly(comfy, monkeypatch):

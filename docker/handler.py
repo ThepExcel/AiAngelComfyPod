@@ -76,6 +76,55 @@ def _output_files(outputs: dict) -> list[Path]:
     return files
 
 
+HF_BASE = os.environ.get("HF_BASE", "https://huggingface.co")
+# loader node -> (input holding the file name, models subfolder)
+LOADERS = {
+    "LoraLoaderModelOnly": ("lora_name", "loras"),
+    "LoraLoader": ("lora_name", "loras"),
+    "UNETLoader": ("unet_name", "diffusion_models"),
+    "VAELoader": ("vae_name", "vae"),
+    "CLIPLoader": ("clip_name", "text_encoders"),
+}
+
+
+def fetch_missing_models(workflow: dict) -> list[str]:
+    """Download model files the graph names but ComfyUI does not list, from the endpoint's HF repo.
+
+    A cached model is a snapshot taken when the endpoint was set up, so a file added to the repo
+    later is missing on the worker. Files go to ComfyUI's own models/<subfolder>, which ComfyUI
+    rescans on the next prompt. Needs MODEL_REPO (or RunPod's MODEL_NAME), plus HF_TOKEN for a
+    private repo.
+    """
+    repo = os.environ.get("MODEL_REPO") or os.environ.get("MODEL_NAME")
+    token = os.environ.get("HF_TOKEN")
+    fetched = []
+    listed: dict[str, set] = {}
+    for node in workflow.values():
+        spec = LOADERS.get(node.get("class_type", ""))
+        name = (node.get("inputs") or {}).get(spec[0]) if spec else None
+        if not isinstance(name, str):
+            continue
+        folder = spec[1]
+        if folder not in listed:
+            listed[folder] = set(_get(f"/models/{folder}"))
+        if name in listed[folder] or not repo:
+            continue
+        dest = COMFY_DIR / "models" / folder / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        req = urllib.request.Request(
+            f"{HF_BASE}/{repo}/resolve/main/{folder}/{name}",
+            headers={"Authorization": f"Bearer {token}"} if token else {},
+        )
+        part = dest.with_name(dest.name + ".part")
+        with urllib.request.urlopen(req, timeout=600) as r, open(part, "wb") as f:
+            while chunk := r.read(8 * 1024 * 1024):
+                f.write(chunk)
+        part.replace(dest)
+        listed[folder].add(name)
+        fetched.append(f"{folder}/{name}")
+    return fetched
+
+
 def run_job(job_input: dict) -> dict:
     workflow = job_input.get("workflow")
     if not isinstance(workflow, dict) or not workflow:
@@ -87,6 +136,7 @@ def run_job(job_input: dict) -> dict:
     max_seconds = float(job_input.get("max_seconds", 1500))
 
     wait_for_comfy()
+    fetched = fetch_missing_models(workflow)
     t0 = time.time()
     prompt_id = _post("/prompt", {"prompt": workflow, "client_id": str(uuid.uuid4())})["prompt_id"]
     while True:
@@ -114,7 +164,7 @@ def run_job(job_input: dict) -> dict:
         data = p.read_bytes()
         files.append({"name": p.name, "bytes": len(data), "b64": base64.b64encode(data).decode()})
         p.unlink(missing_ok=True)  # container disk stays clean between jobs
-    return {"prompt_id": prompt_id, "seconds": seconds, "files": files}
+    return {"prompt_id": prompt_id, "seconds": seconds, "fetched": fetched, "files": files}
 
 
 def handler(job: dict) -> dict:
