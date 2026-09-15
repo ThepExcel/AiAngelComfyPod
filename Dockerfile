@@ -167,6 +167,13 @@ COPY presets/nsfw.txt /opt/aiangel/nsfw.txt
 COPY docker/start.sh /opt/aiangel/start.sh
 COPY docker/download_models.sh /opt/aiangel/download_models.sh
 COPY docker/seed_model_manager_keys.py /opt/aiangel/
+# RunPod Serverless mode (AIANGEL_SERVERLESS=1): the runpod SDK goes into its own --target dir,
+# put on PYTHONPATH only for the handler process, so it can never move a package ComfyUI
+# depends on; the handler only talks HTTP to ComfyUI.
+ARG RUNPOD_SDK_VERSION=1.12.0
+RUN python3.12 -m pip install --no-cache-dir --target /opt/aiangel/sls "runpod==${RUNPOD_SDK_VERSION}" \
+    && PYTHONPATH=/opt/aiangel/sls python3.12 -c "import runpod; print('runpod', runpod.__version__)"
+COPY docker/handler.py docker/serverless_models.py /opt/aiangel/
 # Our own node: the "Model list" sidebar tab (paste links, download all), the boot downloader, and
 # the "Outputs" tab (ZIP download, pull.py sync).
 COPY nodes/ComfyUI-AiAngel /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel
@@ -176,6 +183,7 @@ RUN echo "AIANGEL_NODE=$(sha256sum /opt/comfyui/custom_nodes.baked/ComfyUI-AiAng
     && python3.12 -c "import torch, comfy_kitchen; print('torch', torch.__version__)"
 
 ENV DATA_DIR=/workspace/aiangel \
+    AIANGEL_SERVERLESS=0 \
     MODELS="" \
     EXTRA_MODELS="" \
     COMFYUI_ARGS=""

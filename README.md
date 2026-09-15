@@ -6,6 +6,9 @@ links, press one button, and every checkpoint, LoRA and VAE lands in the right f
 
 Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
+New to RunPod? Sign up through [runpod.io?ref=fbrjus7u](https://runpod.io?ref=fbrjus7u) — it
+supports this template.
+
 ## What you get
 
 - **ComfyUI v0.35.0**, PyTorch — works on RTX 5090 (Blackwell) and older cards. Two images:
@@ -237,6 +240,19 @@ the node's code straight from GitHub at a pinned commit onto your own pod's volu
 model file (`minimax_h3_latent_upscaler_3d_bf16.safetensors`, ≈ 690 MB, from
 `LBH-123-AI/Minimax_h3_latent_Upscaler` on Hugging Face) the same way any other preset
 downloads. Restart the pod after adding it the first time so ComfyUI picks up the new node.
+
+## Serverless worker (advanced)
+
+The same image runs as a RunPod **Serverless** worker when the template sets
+`AIANGEL_SERVERLESS=1`: no web UI and no boot downloads, just ComfyUI plus a job handler.
+
+- **Models** come from the endpoint's **cached model** — a Hugging Face repo laid out like
+  ComfyUI's `models/` folder (`diffusion_models/`, `loras/`, `text_encoders/`, `vae/`, ...;
+  private repos work with your HF token) — and/or a network volume that a pod of this template
+  filled (`/runpod-volume/aiangel/models`). Set `MODEL_REPO=owner/name` to pick one cached repo.
+- **Job input:** `{"workflow": <ComfyUI API graph>, "images": {"ref1.jpg": "<base64>"}}`.
+  **Output:** `{"seconds": ..., "files": [{"name", "bytes", "b64"}]}`. RunPod caps a `/run`
+  result at 10 MB, so keep outputs under 7 MB (a 15 s 576×1024 H3 clip is about 2.5 MB).
 
 ## Build
 

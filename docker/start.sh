@@ -97,6 +97,18 @@ for req in "$DATA_DIR"/custom_nodes/*/requirements.txt; do
         || stamp "WARNING: requirements for $name failed, see $LOG_DIR/user-nodes-pip.log"
 done
 
+# ---- RunPod Serverless worker: no web services or boot downloads. Models come from the
+# endpoint's cached Hugging Face repo and/or a network volume; handler.py takes the jobs.
+if [ "${AIANGEL_SERVERLESS:-0}" = 1 ]; then
+    python3.12 /opt/aiangel/serverless_models.py "$COMFY/extra_model_paths.yaml" \
+        | while read -r line; do stamp "$line"; done
+    cd "$COMFY"
+    # shellcheck disable=SC2086
+    python3.12 main.py --listen 127.0.0.1 --port 8188 ${COMFYUI_ARGS:-} &
+    stamp "serverless worker: ComfyUI starting, handler waiting for jobs"
+    PYTHONPATH=/opt/aiangel/sls exec python3.12 /opt/aiangel/handler.py
+fi
+
 # ---- access passwords: use the env value, otherwise generate one once and keep it on the volume
 secret() {
     local name=$1 given=$2 file="$SECRETS/$1"
