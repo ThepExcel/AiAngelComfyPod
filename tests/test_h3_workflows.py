@@ -33,6 +33,21 @@ def test_clip_defaults_use_turbo_lora_and_kitchen_attention():
     assert by_class(g, "UNETLoader")[0]["inputs"]["unet_name"] == h3.UNET
 
 
+def test_clip_without_refs_is_text_to_video():
+    g = h3.clip("integrated_multimodal_description: [Shot 1] ...", [], upscale=True)
+    assert_links_resolve(g)
+    assert not by_class(g, "LoadImage")
+    assert not by_class(g, "MiniMaxH3ReferenceToVideo")
+    t2v = by_class(g, "MiniMaxH3ImageToVideo")
+    assert len(t2v) == 1
+    assert not {"first_frame", "last_frame"} & t2v[0]["inputs"].keys()
+    t2v_id = next(k for k, n in g.items() if n["class_type"] == "MiniMaxH3ImageToVideo")
+    sample = by_class(g, "SamplerCustomAdvanced")[0]["inputs"]
+    assert sample["latent_image"] == [t2v_id, 1]
+    assert by_class(g, "BasicGuider")[0]["inputs"]["conditioning"] == [t2v_id, 0]
+    assert by_class(g, "MinimaxH3LatentUpscaler3D")
+
+
 def test_turbo_zero_drops_turbo_lora_for_merged_turbo_models():
     g = h3.clip(
         "p",

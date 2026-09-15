@@ -111,6 +111,8 @@ def _numbered(g: dict) -> dict:
             for k, v in node["inputs"].items()
         }
         title = TITLES.get(key) or (f"LoRA {key[4:]}" if key.startswith("lora") else None)
+        if node["class_type"] == "MiniMaxH3ImageToVideo":
+            title = "H3 Text to Video"
         out[ids[key]] = {**node, "inputs": inputs, **({"_meta": {"title": title}} if title else {})}
     return out
 
@@ -140,12 +142,25 @@ def _models(
 def _reference(
     g: dict, prompt: str, refs: list[str], width, height, seconds: float, ref_size: str = "match"
 ) -> None:
+    """No refs = text-to-video: core MiniMaxH3ImageToVideo with no keyframes, same two outputs
+    (positive, AV latent) under the same "r2v" key, so sampling and upscaling wire up unchanged."""
     for i, name in enumerate(refs):
         g[f"ref{i}"] = _node("LoadImage", image=name)
     g["seconds"] = _node("PrimitiveFloat", value=float(seconds))
     g["length"] = _node(
         "ComfyMathExpression", expression=LENGTH_EXPR, **{"values.a": ["seconds", 0]}
     )
+    if not refs:
+        g["r2v"] = _node(
+            "MiniMaxH3ImageToVideo",
+            clip=["clip", 0],
+            vae=["vae", 0],
+            prompt=prompt,
+            width=width,
+            height=height,
+            length=["length", 1],
+        )
+        return
     g["r2v"] = _node(
         "MiniMaxH3ReferenceToVideo",
         clip=["clip", 0],
