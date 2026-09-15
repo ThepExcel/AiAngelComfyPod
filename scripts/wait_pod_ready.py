@@ -1,8 +1,7 @@
 # /// script
 # dependencies = ["requests"]
 # ///
-"""Wait for a newly deployed AI Angel pod: find the running pod (newest, optionally from a template),
-then poll its dashboard until ComfyUI is ready and the boot models are present. Prints progress.
+"""Wait for a newly deployed AI Angel pod: find the newest running pod from the template, then poll its dashboard until ComfyUI is ready and the boot models are present. Prints progress.
 
   uv run scripts/wait_pod_ready.py [--template kv4dk65aim] [--minutes 60]
 """
@@ -56,7 +55,8 @@ def main() -> None:
                 ).json()
                 comfy = next(s["state"] for s in st["services"] if s["key"] == "comfyui")
                 files = [f["state"] for p in st["presets"] if p["in_env"] for f in p["files"]]
-                line = f"comfyui={comfy} image={st['pod'].get('image')} models={files.count('have')}/{len(files)}"
+                have = f"{files.count('have')}/{len(files)}"
+                line = f"comfyui={comfy} image={st['pod'].get('image')} models={have}"
                 if line != last:
                     print(f"+{time.monotonic() - t0:.0f}s {line}", flush=True)
                     last = line
