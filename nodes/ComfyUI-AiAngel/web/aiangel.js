@@ -345,10 +345,11 @@ function renderOutputs(container) {
   const timer = setInterval(() => (container.isConnected ? refresh() : clearInterval(timer)), 15000);
 }
 
-/* First visit: open "AiAngelH3 - Clip" instead of an empty canvas, so a new user does not have to
-   find the Templates browser. Runs once per browser, and only while the canvas is still the
-   untouched startup blank; a restored or already-edited workflow is never replaced. */
-const FIRST_WORKFLOW = "AiAngelH3 - Clip";
+/* First visit: open "AiAngelH3-Clip" instead of an empty canvas, so a new user does not have to
+   find the Templates browser (the dashboard's Open ComfyUI link does the same with ?template=).
+   Runs once per browser, and only while the canvas is still the untouched startup blank; a
+   restored or already-edited workflow is never replaced. */
+const FIRST_WORKFLOW = "AiAngelH3-Clip";
 const FIRST_FLAG = "aiangel.firstWorkflowOpened";
 
 function readFlag() {

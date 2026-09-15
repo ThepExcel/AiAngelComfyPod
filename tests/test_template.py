@@ -154,11 +154,22 @@ def test_aiangel_node_version_covers_every_file():
     assert "*.py" not in line and "*.js" not in line, line
 
 
+def test_example_workflow_names_can_open_from_a_link():
+    """ComfyUI's ?template=<name>&source=<node> link only accepts [a-zA-Z0-9_.-]; the dashboard
+    and the first-visit loader open AiAngelH3-Clip by that name."""
+    import re
+
+    wf_dir = ROOT / "nodes" / "ComfyUI-AiAngel" / "example_workflows"
+    names = [p.stem for p in wf_dir.glob("*.json")]
+    assert "AiAngelH3-Clip" in names
+    assert all(re.fullmatch(r"[a-zA-Z0-9_.-]+", n) for n in names), names
+
+
 def test_aiangelh3_example_workflows_load_the_merge():
     import json
 
     wf_dir = ROOT / "nodes" / "ComfyUI-AiAngel" / "example_workflows"
-    for name in ("AiAngelH3 - Clip.json", "AiAngelH3 - Extend.json"):
+    for name in ("AiAngelH3-Clip.json", "AiAngelH3-Extend.json"):
         wf = json.loads((wf_dir / name).read_text(encoding="utf-8"))
         by_type = {}
         for n in wf["nodes"]:

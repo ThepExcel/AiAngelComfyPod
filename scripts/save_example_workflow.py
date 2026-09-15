@@ -3,7 +3,7 @@
 Keeps what the UI wrote; only resets run-specific state so the committed file is stable: the zero
 workflow id, the seed from the source example, and the source's canvas view.
 
-usage: uv run python scripts/save_example_workflow.py UI_SAVED.json "AiAngelH3 - Clip.json" \
+usage: uv run python scripts/save_example_workflow.py UI_SAVED.json AiAngelH3-Clip.json \
     SOURCE_EXAMPLE.json
 """
 

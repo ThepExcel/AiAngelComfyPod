@@ -117,7 +117,8 @@
       lead, el("span", { class: wordClass, text: word }));
     $("#heroSub").textContent = sub;
     for (const a of [$("#openComfy"), $("#openComfyTop")]) {
-      a.href = comfy.url || "#";
+      // ComfyUI's own template link: opens the default workflow in a new tab
+      a.href = comfy.url ? comfy.url + "?template=AiAngelH3-Clip&source=ComfyUI-AiAngel" : "#";
       a.classList.toggle("is-disabled", comfy.state !== "ready");
     }
 

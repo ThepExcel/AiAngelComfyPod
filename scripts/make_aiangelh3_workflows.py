@@ -86,12 +86,8 @@ if __name__ == "__main__":
     out.mkdir(parents=True, exist_ok=True)
     timing = sys.argv[2] if len(sys.argv) > 2 else "Timing: not measured yet."
     for src, dst, prefix in (
-        ("H3 Hybrid - Clip (MODELS=h3).json", "AiAngelH3 - Clip.json", "AiAngel/aiangelh3"),
-        (
-            "H3 Hybrid - Extend (MODELS=h3).json",
-            "AiAngelH3 - Extend.json",
-            "AiAngel/aiangelh3-extend",
-        ),
+        ("H3-Hybrid-Clip.json", "AiAngelH3-Clip.json", "AiAngel/aiangelh3"),
+        ("H3-Hybrid-Extend.json", "AiAngelH3-Extend.json", "AiAngel/aiangelh3-extend"),
     ):
         wf = json.loads((SRC / src).read_text(encoding="utf-8"))
         text = json.dumps(convert(wf, prefix, timing), indent=1, ensure_ascii=False)

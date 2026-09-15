@@ -19,8 +19,10 @@ Full reference and source: https://github.com/ThepExcel/AiAngelComfyPod
 3. In **Connect**, open **8189 Dashboard**. It shows the boot and each model's download progress,
    and when ComfyUI is ready press **Open ComfyUI** there (models still downloading appear in
    ComfyUI after you press **R**).
-4. Open **Templates → ComfyUI-AiAngel → AiAngelH3 - Clip** for a ready H3 workflow (with
-   `MODELS=h3`, use **H3 Hybrid - Clip (MODELS=h3)** instead).
+4. ComfyUI opens **AiAngelH3-Clip**, a ready H3 workflow, on your first visit. The others are in
+   **Templates → ComfyUI-AiAngel** (with `MODELS=h3`, use **H3-Hybrid-Clip** instead).
+5. Storage: a Network volume, or no volume at all. A Global volume (BETA) makes H3 model loading
+   several times slower, so it is not recommended with this template yet.
 
 AiAngelH3 (https://huggingface.co/AiAngelGallery/AiAngelH3) is a merge of MiniMax H3 derivatives under
 the MiniMax H3 Community License: not licensed in the EU, UK, South Korea or the US; label published

@@ -191,14 +191,18 @@ Second test (RTX 5090, pod disk without a network volume, 2026-09-14):
 
 ## AiAngel H3 workflows
 
-Open ComfyUI's **Templates** browser → *ComfyUI-AiAngel*:
+ComfyUI opens **AiAngelH3-Clip** by itself on a browser's first visit (only over an untouched
+blank canvas), and the dashboard's **Open ComfyUI** links to it with
+`?template=AiAngelH3-Clip&source=ComfyUI-AiAngel`. All four are in the **Templates** browser →
+*ComfyUI-AiAngel*. File names carry no spaces, because ComfyUI's `?template=` link accepts only
+letters, digits, `_`, `-` and `.`.
 
-- **AiAngelH3 - Clip** / **AiAngelH3 - Extend** — the same two workflows set up for the AiAngelH3
+- **AiAngelH3-Clip** / **AiAngelH3-Extend** — the same two workflows set up for the AiAngelH3
   merge (`MODELS=h3core,aiangelh3`, the RunPod template's default): turbo LoRA bypassed, euler /
   simple, 8 steps.
-- **H3 Hybrid - Clip (MODELS=h3)** — reference-to-video from `<Picture 1>` and a structured
+- **H3-Hybrid-Clip** (needs `MODELS=h3`) — reference-to-video from `<Picture 1>` and a structured
   prompt, 2-15 s.
-- **H3 Hybrid - Extend (MODELS=h3)** — continues a previous H3 clip without a cut: its last 22
+- **H3-Hybrid-Extend** (needs `MODELS=h3`) — continues a previous H3 clip without a cut: its last 22
   frames and their sound anchor the new part, the overlap is cross-faded, and the saved video is
   previous + new. Feed the result back in to keep going past 15 s.
 
