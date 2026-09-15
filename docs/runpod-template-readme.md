@@ -21,7 +21,7 @@ Full reference and source: https://github.com/ThepExcel/AiAngelComfyPod
 
 | Variable | Example | Meaning |
 |---|---|---|
-| `MODELS` | `h3` | presets to download on boot, comma list: `h3` (~44 GB), `h3core` (~21 GB, text encoder + VAEs only, for your own H3 model), `h3extra`, `h3upscaler` (~690 MB, H3 latent upscaler), `scail` (~29 GB), `krea2` (~19 GB), `all` |
+| `MODELS` | `h3` | presets to download on boot, comma list: `h3` (~44 GB), `h3core` (~21 GB, text encoder + VAEs only, for your own H3 model), `aiangelh3` (~21 GB, the AiAngelH3 merge; pair with `h3core`), `h3extra`, `h3upscaler` (~690 MB, H3 latent upscaler), `scail` (~29 GB), `krea2` (~19 GB), `all` |
 | `EXTRA_MODELS` | links, one per line | any other Civitai / Hugging Face files to download on boot |
 | `CIVITAI_TOKEN` | `{{ RUNPOD_SECRET_civitai }}` | your Civitai API key, needed for Civitai downloads |
 | `HF_TOKEN` | `{{ RUNPOD_SECRET_hf }}` | only for gated Hugging Face files |

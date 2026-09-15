@@ -20,6 +20,9 @@ VIDEO_VAE = "minimax_h3_video_vae_fp16.safetensors"
 AUDIO_VAE = "minimax_h3_audio_vae_fp32.safetensors"
 TURBO_LORA = "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors"
 UPSCALE_MODEL = "minimax_h3_latent_upscaler_3d_bf16.safetensors"
+# AiAngelH3 merge (preset aiangelh3): turbo delta merged in, so no turbo LoRA; euler/simple 8 steps
+AIANGEL_UNET = "AiAngelH3-v1-int8.safetensors"
+AIANGEL = {"unet": AIANGEL_UNET, "turbo": 0, "sampler": "euler", "scheduler": "simple", "steps": 8}
 # Refine-pass sigmas from the author's r2v example workflow (its own SigmaShift(12)+turbo-lora
 # chain, which we do not replicate) — mirrored as instructed rather than invented.
 UPSCALE_REFINE_SIGMAS = "0.9035, 0.6316, 0.3158, 0.0000"
@@ -386,6 +389,20 @@ if __name__ == "__main__":
     for name, graph in (
         ("h3-clip", clip(EXAMPLE_PROMPT, ["example.png"])),
         ("h3-extend", extend(EXAMPLE_PROMPT, ["example.png"], "previous.mp4")),
+        (
+            "aiangelh3-clip",
+            clip(EXAMPLE_PROMPT, ["example.png"], prefix="AiAngel/aiangelh3", **AIANGEL),
+        ),
+        (
+            "aiangelh3-extend",
+            extend(
+                EXAMPLE_PROMPT,
+                ["example.png"],
+                "previous.mp4",
+                prefix="AiAngel/aiangelh3-extend",
+                **AIANGEL,
+            ),
+        ),
     ):
         (out / f"{name}.api.json").write_text(json.dumps(graph, indent=1), encoding="utf-8")
         print(out / f"{name}.api.json")

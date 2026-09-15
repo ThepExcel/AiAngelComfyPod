@@ -33,7 +33,7 @@ supports this template.
 
    | Variable | Example | Meaning |
    |---|---|---|
-   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `h3core` ≈ 21 GB = only the H3 text encoder + VAEs, for your own H3 model, `h3extra` ≈ 49 GB more, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `h3upscaler` ≈ 690 MB, `nsfw` = adult kit, see below) |
+   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `h3core` ≈ 21 GB = only the H3 text encoder + VAEs, for your own H3 model, `aiangelh3` ≈ 21 GB = the AiAngelH3 merge, pair with `h3core`, `h3extra` ≈ 49 GB more, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `h3upscaler` ≈ 690 MB, `nsfw` = adult kit, see below) |
    | `EXTRA_MODELS` | *(links, see below)* | any other Civitai / Hugging Face models to download on boot |
    | `CIVITAI_TOKEN` | *(your Civitai API key)* | needed for Civitai downloads; also fills Model Manager's key |
    | `HF_TOKEN` | *(your token)* | only needed for gated Hugging Face files; also fills Model Manager's key |
@@ -228,6 +228,12 @@ video VAE that ComfyUI's built-in H3 templates ask for, the audio VAE and the re
 LoRA — exactly what the AiAngel workflows load. In ComfyUI's own H3 templates, pick the hybrid
 file in the diffusion model loader. Bringing your own H3 model (a Civitai merge, a turbo-merged
 checkpoint)? `MODELS=h3core` downloads only the text encoder and the two VAEs it needs.
+`MODELS=h3core,aiangelh3` adds **AiAngelH3**, our merge of two H3 checkpoints (40% H3 Eros Max,
+60% RedCraft H3) for realistic reference-face clips, from the public Hugging Face repo
+[`AiAngelGallery/AiAngelH3`](https://huggingface.co/AiAngelGallery/AiAngelH3) (no token needed; its
+license, territory limits and use terms are on that page and on
+[Civitai](https://civitai.red/models/2940108/aiangelh3)). Run it with euler / simple, 8 steps and no
+turbo LoRA (`scripts/h3_workflows.py`: `clip(..., **AIANGEL)`).
 `MODELS=h3extra` adds the *b20-49* variant (closer to `ref2va`, for stronger reference
 adherence), the original plain `ref2va` checkpoint, the fl2v 4-step and 8-step turbo LoRAs, the
 int8 video VAE (slower than fp16 on CUDA 12.8 in our tests — community workflows say it pays off

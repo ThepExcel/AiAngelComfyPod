@@ -85,6 +85,17 @@ def test_h3_preset_holds_what_the_template_workflows_load():
     core = {h3wf.TEXT_ENCODER, h3wf.VIDEO_VAE, h3wf.AUDIO_VAE}
     assert preset_files("h3core") == core, "h3core = what any H3 diffusion model needs"
     assert preset_files("h3") == core | {h3wf.UNET, h3wf.TURBO_LORA}
+    assert preset_files("aiangelh3") == {h3wf.AIANGEL_UNET}, (
+        "aiangelh3 = the merge only; pair with h3core"
+    )
+    graph = h3wf.clip("x", [], **h3wf.AIANGEL)
+    loaded = {
+        v
+        for n in graph.values()
+        for k, v in n["inputs"].items()
+        if k in ("unet_name", "clip_name", "vae_name", "lora_name")
+    }
+    assert loaded == core | {h3wf.AIANGEL_UNET}, "the AiAngelH3 clip loads only h3core + aiangelh3"
 
 
 def test_no_secrets_or_private_paths_in_image_files():
