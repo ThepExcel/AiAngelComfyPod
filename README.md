@@ -11,9 +11,10 @@ supports this template.
 
 ## What you get
 
-- **ComfyUI v0.35.0**, PyTorch — works on RTX 5090 (Blackwell) and older cards. Two images:
-  `:cuda12.8` (= `:latest`, runs on any current host) and `:cuda13.0` (needs a host driver with
-  CUDA 13 — pick the CUDA 13.0 filter when you deploy).
+- **ComfyUI v0.35.0**, PyTorch on **CUDA 13.0** (`:latest` = `:cuda13.0`): an AiAngelH3 5 s clip
+  on an RTX PRO 6000 takes 31 s warm, against 75 s on the CUDA 12.8 build. It needs a host driver
+  with CUDA 13 (every RTX PRO 6000 host we got had 13.0 or 13.2). A pod that never starts on an
+  older host: use `:cuda12.8` instead, which runs anywhere but is about 2.4x slower.
 - **Fast boots.** ComfyUI and all Python packages are inside the image, not on your network
   volume, so a restart does not re-install or re-import anything from slow storage. Only your
   models, inputs, outputs, settings and custom nodes live on the volume.
@@ -186,12 +187,15 @@ Second test (RTX 5090, pod disk without a network volume, 2026-09-14):
 
 Open ComfyUI's **Templates** browser → *ComfyUI-AiAngel*:
 
+- **AiAngelH3 - Clip** / **AiAngelH3 - Extend** — the same two workflows set up for the AiAngelH3
+  merge (`MODELS=h3core,aiangelh3`, the RunPod template's default): turbo LoRA bypassed, euler /
+  simple, 8 steps.
 - **AiAngel H3 - Clip** — reference-to-video from `<Picture 1>` and a structured prompt, 2-15 s.
 - **AiAngel H3 - Extend** — continues a previous H3 clip without a cut: its last 22 frames and
   their sound anchor the new part, the overlap is cross-faded, and the saved video is previous +
   new. Feed the result back in to keep going past 15 s.
 
-Both use only ComfyUI core nodes, the `h3` preset, the 4-step turbo LoRA and Comfy Kitchen
+The AiAngel H3 pair uses only ComfyUI core nodes, the `h3` preset, the 4-step turbo LoRA and Comfy Kitchen
 attention. On an RTX PRO 6000 a 5 s 576×1024 clip takes about 42 s (46 s without Kitchen
 attention), a 15 s clip about 141 s, and extending a 5 s clip by 5 s about 62 s.
 
@@ -241,7 +245,7 @@ on CUDA 13) and the `taeh3` preview VAE, for comparing.
 
 Left out of the image: a neural latent-upscaler node (`Comfyui_Minimax_h3_latent_Upscaler`) from
 the same workflows — its GitHub repo ships no LICENSE file, so it can't be redistributed here.
-It is fetched on your own pod instead: `MODELS=h3,h3upscaler` (the RunPod template's default; or add
+It is fetched on your own pod instead: `MODELS=h3core,h3upscaler,aiangelh3` (the RunPod template's default; or add
 `h3upscaler` to your MODELS list) fetches the node's code straight from GitHub at a pinned commit
 onto your own pod's volume before ComfyUI starts, so it loads on the first boot, and its model file
 (`minimax_h3_latent_upscaler_3d_bf16.safetensors`, ≈ 690 MB, from

@@ -52,16 +52,37 @@ done
 
 # ---- custom nodes: image-managed nodes are re-synced when the image changes; nodes the
 # user installed are left alone. Model-Manager keeps the user's API tokens in private.key.
+# Written in place (--inplace, no owner/perms): RunPod Global volumes refuse rsync's temp files
+# (mkstemp: Operation not permitted), which left every baked node an empty folder. Each node's
+# __init__.py is checked on every boot, so a half-synced volume heals itself, and a node that
+# still cannot be copied runs straight from the image instead of going missing.
 BUNDLE="$COMFY/.runpod-bundle-version"
-if ! cmp -s "$BUNDLE" "$DATA_DIR/custom_nodes/.aiangel-bundle-version"; then
+nodes_ok() {
     for node in "$BAKED_NODES"/*/; do
         name=$(basename "$node")
-        mkdir -p "$DATA_DIR/custom_nodes/$name"
-        rsync -a --delete --exclude=private.key --exclude=rgthree_config.json "$node" "$DATA_DIR/custom_nodes/$name/"
+        [ -f "$node/__init__.py" ] && [ ! -f "$DATA_DIR/custom_nodes/$name/__init__.py" ] && return 1
     done
-    rsync -a --exclude="*/" "$BAKED_NODES/" "$DATA_DIR/custom_nodes/"
-    cp "$BUNDLE" "$DATA_DIR/custom_nodes/.aiangel-bundle-version"
-    stamp "custom nodes synced from image"
+    return 0
+}
+if ! cmp -s "$BUNDLE" "$DATA_DIR/custom_nodes/.aiangel-bundle-version" || ! nodes_ok; then
+    for node in "$BAKED_NODES"/*/; do
+        name=$(basename "$node")
+        dest="$DATA_DIR/custom_nodes/$name"
+        [ -L "$dest" ] && rm -f "$dest"
+        mkdir -p "$dest"
+        rsync -rlt --inplace --no-perms --no-owner --no-group --delete \
+            --exclude=private.key --exclude=rgthree_config.json "$node" "$dest/" \
+            || stamp "WARNING: rsync of custom node $name exited $?"
+        if [ -f "$node/__init__.py" ] && [ ! -f "$dest/__init__.py" ]; then
+            rm -rf "$dest" && ln -sfn "${node%/}" "$dest"
+            stamp "WARNING: custom node $name could not be copied to the volume; running it from the image"
+        fi
+    done
+    rsync -rlt --inplace --no-perms --no-owner --no-group --exclude="*/" "$BAKED_NODES/" "$DATA_DIR/custom_nodes/" || true
+    if nodes_ok; then
+        cp "$BUNDLE" "$DATA_DIR/custom_nodes/.aiangel-bundle-version"
+        stamp "custom nodes synced from image"
+    fi
 fi
 rm -rf "$COMFY/custom_nodes"
 ln -sfn "$DATA_DIR/custom_nodes" "$COMFY/custom_nodes"

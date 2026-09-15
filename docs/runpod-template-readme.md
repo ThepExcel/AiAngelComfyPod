@@ -11,17 +11,25 @@ Full reference and source: https://github.com/ThepExcel/AiAngelComfyPod
 ## Quick start
 
 1. Pick a GPU with enough VRAM for your model (H3 video: 48 GB or more is comfortable; RTX PRO 6000
-   96 GB is the fastest we measured).
-2. Keep the default `MODELS=h3,h3upscaler`, or change it with **Set overrides** (see below), and deploy.
+   96 GB is the fastest we measured). The image runs on **CUDA 13.0** (about 2.4x faster than 12.8
+   for H3); if a pod never starts on an older host, edit the image to
+   `ghcr.io/thepexcel/aiangelcomfypod:cuda12.8`.
+2. Keep the default `MODELS=h3core,h3upscaler,aiangelh3` (~42 GB: H3 text encoder + VAEs, the H3
+   latent upscaler and the AiAngelH3 model), or change it with **Set overrides** (see below), and deploy.
 3. Open port **8188** (ComfyUI). The first boot downloads the models in the background; when
    `/workspace/aiangel/logs/models.log` says `ALL PRESET MODELS READY`, press **R** in ComfyUI.
-4. Open **Templates → ComfyUI-AiAngel → AiAngel H3 - Clip** for a ready H3 workflow.
+4. Open **Templates → ComfyUI-AiAngel → AiAngelH3 - Clip** for a ready H3 workflow (with
+   `MODELS=h3`, use **AiAngel H3 - Clip** instead).
+
+AiAngelH3 (https://huggingface.co/AiAngelGallery/AiAngelH3) is a merge of MiniMax H3 derivatives under
+the MiniMax H3 Community License: not licensed in the EU, UK, South Korea or the US; label published
+results as AI-generated.
 
 ## Environment variables
 
 | Variable | Example | Meaning |
 |---|---|---|
-| `MODELS` | `h3` | presets to download on boot, comma list: `h3` (~44 GB), `h3core` (~21 GB, text encoder + VAEs only, for your own H3 model), `aiangelh3` (~21 GB, the AiAngelH3 merge; pair with `h3core`), `h3extra`, `h3upscaler` (~690 MB, H3 latent upscaler), `scail` (~29 GB), `krea2` (~19 GB), `all` |
+| `MODELS` | `h3core,h3upscaler,aiangelh3` | presets to download on boot, comma list: `h3` (~44 GB), `h3core` (~21 GB, text encoder + VAEs only, for your own H3 model), `aiangelh3` (~21 GB, the AiAngelH3 merge; pair with `h3core`), `h3extra`, `h3upscaler` (~690 MB, H3 latent upscaler), `scail` (~29 GB), `krea2` (~19 GB), `all` |
 | `EXTRA_MODELS` | links, one per line | any other Civitai / Hugging Face files to download on boot |
 | `CIVITAI_TOKEN` | `{{ RUNPOD_SECRET_civitai }}` | your Civitai API key, needed for Civitai downloads |
 | `HF_TOKEN` | `{{ RUNPOD_SECRET_hf }}` | only for gated Hugging Face files |

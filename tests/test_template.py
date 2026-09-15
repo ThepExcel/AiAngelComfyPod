@@ -128,6 +128,34 @@ def test_start_sh_strips_nsfw_from_presets():
     assert "/opt/aiangel/nsfw.txt" in text and "s/,nsfw,/,/g" in text
 
 
+def test_start_sh_node_sync_survives_global_volumes():
+    """RunPod Global volumes refuse rsync's temp files; the sync must write in place and heal."""
+    text = (ROOT / "docker" / "start.sh").read_text(encoding="utf-8")
+    assert "rsync -a --delete" not in text
+    assert text.count("--inplace") >= 2
+    assert "! nodes_ok" in text, "a half-synced volume must re-sync even when the version matches"
+    assert 'ln -sfn "${node%/}" "$dest"' in text, "fallback: run the node from the image"
+
+
+def test_aiangelh3_example_workflows_load_the_merge():
+    import json
+
+    wf_dir = ROOT / "nodes" / "ComfyUI-AiAngel" / "example_workflows"
+    for name in ("AiAngelH3 - Clip.json", "AiAngelH3 - Extend.json"):
+        wf = json.loads((wf_dir / name).read_text(encoding="utf-8"))
+        by_type = {}
+        for n in wf["nodes"]:
+            by_type.setdefault(n["type"], []).append(n)
+        assert by_type["UNETLoader"][0]["widgets_values"][0] == "AiAngelH3-v1-int8.safetensors", (
+            name
+        )
+        assert all(n["mode"] == 4 for n in by_type["LoraLoaderModelOnly"]), (
+            f"{name}: turbo LoRA bypassed"
+        )
+        assert by_type["KSamplerSelect"][0]["widgets_values"][0] == "euler", name
+        assert by_type["BasicScheduler"][0]["widgets_values"][:2] == ["simple", 8], name
+
+
 def test_start_sh_fetches_h3_upscaler_opt_in():
     text = (ROOT / "docker" / "start.sh").read_text(encoding="utf-8")
     assert ",h3upscaler,*)" in text
