@@ -235,11 +235,11 @@ on CUDA 13) and the `taeh3` preview VAE, for comparing.
 
 Left out of the image: a neural latent-upscaler node (`Comfyui_Minimax_h3_latent_Upscaler`) from
 the same workflows — its GitHub repo ships no LICENSE file, so it can't be redistributed here.
-It is opt-in instead: `MODELS=h3,h3upscaler` (or add `h3upscaler` to your MODELS list) fetches
-the node's code straight from GitHub at a pinned commit onto your own pod's volume, and its
-model file (`minimax_h3_latent_upscaler_3d_bf16.safetensors`, ≈ 690 MB, from
-`LBH-123-AI/Minimax_h3_latent_Upscaler` on Hugging Face) the same way any other preset
-downloads. Restart the pod after adding it the first time so ComfyUI picks up the new node.
+It is fetched on your own pod instead: `MODELS=h3,h3upscaler` (the RunPod template's default; or add
+`h3upscaler` to your MODELS list) fetches the node's code straight from GitHub at a pinned commit
+onto your own pod's volume before ComfyUI starts, so it loads on the first boot, and its model file
+(`minimax_h3_latent_upscaler_3d_bf16.safetensors`, ≈ 690 MB, from
+`LBH-123-AI/Minimax_h3_latent_Upscaler` on Hugging Face) the same way any other preset downloads.
 
 ## Serverless worker (advanced)
 

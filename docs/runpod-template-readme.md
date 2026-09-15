@@ -12,7 +12,7 @@ Full reference and source: https://github.com/ThepExcel/AiAngelComfyPod
 
 1. Pick a GPU with enough VRAM for your model (H3 video: 48 GB or more is comfortable; RTX PRO 6000
    96 GB is the fastest we measured).
-2. Keep the default `MODELS=h3`, or change it (see below), and deploy.
+2. Keep the default `MODELS=h3,h3upscaler`, or change it with **Set overrides** (see below), and deploy.
 3. Open port **8188** (ComfyUI). The first boot downloads the models in the background; when
    `/workspace/aiangel/logs/models.log` says `ALL PRESET MODELS READY`, press **R** in ComfyUI.
 4. Open **Templates → ComfyUI-AiAngel → AiAngel H3 - Clip** for a ready H3 workflow.
