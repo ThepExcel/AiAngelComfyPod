@@ -18,5 +18,8 @@ if env and store.parent.is_dir():
     data.update(env)
     with open(store, "wb") as f:
         pickle.dump(data, f)
-    store.chmod(0o600)
+    try:
+        store.chmod(0o600)
+    except OSError:  # RunPod Global volumes refuse chmod; the keys are written anyway
+        pass
     print(f"[aiangel] Model Manager keys set from env: {', '.join(sorted(env))}")

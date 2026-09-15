@@ -486,7 +486,10 @@ async def post_keys(request: web.Request) -> web.Response:
             f.unlink(missing_ok=True)
         elif value:
             f.write_text(value, encoding="utf-8", newline="\n")
-            f.chmod(0o600)
+            try:
+                f.chmod(0o600)
+            except OSError:  # RunPod Global volumes refuse chmod; the key is saved anyway
+                pass
     return web.json_response({site: _mask(_token(cfg, site)) for site in SITES})
 
 

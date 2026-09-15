@@ -345,9 +345,41 @@ function renderOutputs(container) {
   const timer = setInterval(() => (container.isConnected ? refresh() : clearInterval(timer)), 15000);
 }
 
+/* First visit: open "AiAngelH3 - Clip" instead of an empty canvas, so a new user does not have to
+   find the Templates browser. Runs once per browser, and only while the canvas is still the
+   untouched startup blank; a restored or already-edited workflow is never replaced. */
+const FIRST_WORKFLOW = "AiAngelH3 - Clip";
+const FIRST_FLAG = "aiangel.firstWorkflowOpened";
+
+function readFlag() {
+  try { return localStorage.getItem(FIRST_FLAG); } catch { return "1"; }
+}
+
+async function openFirstWorkflow() {
+  if (readFlag()) return;
+  for (let i = 0; i < 60; i++) {  // wait up to ~15 s for startup to settle
+    await new Promise((r) => setTimeout(r, 250));
+    const wf = app.extensionManager?.workflow?.activeWorkflow;
+    if (!app.graph || !wf) continue;
+    if (!wf.isTemporary || wf.isModified || app.graph._nodes?.length) break;  // user's own work
+    if (i < 8) continue;  // give a restored tab a moment to replace the blank
+    try {
+      const r = await api.fetchApi(`/workflow_templates/ComfyUI-AiAngel/${encodeURIComponent(FIRST_WORKFLOW)}.json`);
+      if (!r.ok) return;
+      await app.loadGraphData(await r.json(), true, true, FIRST_WORKFLOW);
+    } catch (e) {
+      console.warn("[aiangel] could not open the first workflow", e);
+      return;
+    }
+    break;
+  }
+  try { localStorage.setItem(FIRST_FLAG, "1"); } catch { /* private window */ }
+}
+
 app.registerExtension({
   name: "aiangel.modelList",
   setup() {
+    openFirstWorkflow();
     app.extensionManager.registerSidebarTab({
       id: "aiangel-outputs",
       icon: "pi pi-images",

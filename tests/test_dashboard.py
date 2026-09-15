@@ -202,6 +202,19 @@ def test_partial_download_goes_missing_after_a_stall(make_dashboard, tmp_path, m
 # ---------------------------------------------------------------------------
 
 
+def test_keys_save_when_volume_refuses_chmod(make_dashboard, monkeypatch):
+    """A RunPod Global volume refuses chmod: saving a key returned 500 on a real pod."""
+    base, cfg = make_dashboard()
+
+    def refuse(self, mode, **kw):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(Path, "chmod", refuse)
+    status, body = post_json(base + "/api/keys", {"civitai": "abcdefgh12345678"})
+    assert status == 200
+    assert body["civitai"] == "abcd…5678"
+
+
 def test_keys_save_mask_and_clear(make_dashboard):
     base, cfg = make_dashboard()
     status, body = post_json(base + "/api/keys", {"civitai": "abcdefgh12345678"})
