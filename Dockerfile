@@ -29,6 +29,10 @@ RUN apt-get update \
 # copy that start.sh syncs onto the volume.
 RUN mv /opt/comfyui-baked /opt/comfyui
 
+# RunPod's Connect links are cross-site: let them open the UI (see the patch's docstring).
+COPY docker/patch_comfy_origin.py /opt/aiangel/patch_comfy_origin.py
+RUN python3.12 /opt/aiangel/patch_comfy_origin.py /opt/comfyui/server.py
+
 COPY docker/patch_model_manager.py /opt/aiangel/patch_model_manager.py
 RUN curl -fSL "https://github.com/hayden-cn/ComfyUI-Model-Manager/releases/download/${MODEL_MANAGER_VERSION}/dist.tar.gz" -o /tmp/mm.tar.gz \
     && echo "${MODEL_MANAGER_SHA256}  /tmp/mm.tar.gz" | sha256sum -c - \
