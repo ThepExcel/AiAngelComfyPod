@@ -64,10 +64,10 @@ def _worker() -> None:
         job = _queue.get()
         try:
             job["state"] = "resolving"
-            job.update(fetch.resolve(job["folder_hint"], job["url"], job["file_part"]))
+            tokens = {site: _token(site) for site in SITES}
+            job.update(fetch.resolve(job["folder_hint"], job["url"], job["file_part"], tokens))
             job["state"] = "downloading"
             job["started"] = time.time()
-            tokens = {site: _token(site) for site in SITES}
             ok, msg = fetch.download(job, _models_dir(), tokens)
             job["state"] = "done" if ok else "failed"
             job["message"] = msg

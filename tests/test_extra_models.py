@@ -136,6 +136,30 @@ def test_remote_size_reads_content_length_and_survives_errors(tmp_path):
     assert fx.remote_size("http://127.0.0.1:9/nothing-listens-here") == 0
 
 
+def test_remote_size_sends_the_token_for_a_private_repo():
+    import http.server
+    import threading
+
+    class PrivateRepo(http.server.BaseHTTPRequestHandler):
+        def do_HEAD(self):  # like huggingface.co: 401 unless the Bearer token comes along
+            ok = self.headers.get("Authorization") == "Bearer hf-secret"
+            self.send_response(200 if ok else 401)
+            self.send_header("Content-Length", "20970427336" if ok else "0")
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), PrivateRepo)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{srv.server_address[1]}/merge.safetensors"
+        assert fx.remote_size(url) == 0
+        assert fx.remote_size(url, "hf-secret") == 20970427336
+    finally:
+        srv.shutdown()
+
+
 ARIA2_403 = """09/14 08:57:42 [ERROR] CUID#7 - Download aborted. URI=https://civitai.com/api/download/models/1
 Exception: [AbstractCommand.cc:351] errorCode=22 URI=https://b2.civitai.com/file/x.safetensors
   -> [HttpSkipResponseCommand.cc:239] errorCode=22 The response status is not successful. status=403

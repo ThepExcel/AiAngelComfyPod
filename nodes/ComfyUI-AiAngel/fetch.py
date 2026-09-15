@@ -109,7 +109,9 @@ def get_json(url: str) -> dict:
         return json.load(r)
 
 
-def resolve(folder: str | None, url: str, file_part: str | None) -> dict:
+def resolve(
+    folder: str | None, url: str, file_part: str | None, tokens: dict | None = None
+) -> dict:
     host = urlparse(url).hostname or ""
     if host in CIVITAI_HOSTS:
         model_id, version_id = civitai_ids(url)
@@ -136,16 +138,20 @@ def resolve(folder: str | None, url: str, file_part: str | None) -> dict:
         "folder": folder or "checkpoints",
         "name": name,
         "url": url,
-        "size": remote_size(url),
+        "size": remote_size(
+            url, (tokens or {}).get("huggingface") if host == "huggingface.co" else None
+        ),
         "site": "huggingface" if host == "huggingface.co" else "direct",
     }
 
 
-def remote_size(url: str) -> int:
+def remote_size(url: str, token: str | None = None) -> int:
     """Byte size from a HEAD request (0 when the server will not say). Without it a 0-byte file
-    left by a failed attempt looked like a finished download (seen on a pod 2026-09-14)."""
+    left by a failed attempt looked like a finished download (seen on a pod 2026-09-14).
+    A private Hugging Face repo answers an anonymous HEAD with 401, so the token goes along."""
+    headers = {**UA, **({"Authorization": f"Bearer {token}"} if token else {})}
     try:
-        req = urllib.request.Request(url, headers=UA, method="HEAD")
+        req = urllib.request.Request(url, headers=headers, method="HEAD")
         with urllib.request.urlopen(req, timeout=30) as r:
             return int(r.headers.get("Content-Length") or 0)
     except Exception:  # gated repo without a token, offline, ...: size stays unknown
@@ -265,7 +271,7 @@ def main(argv: list[str], emit: Callable[[str], None] = print) -> int:
     failed = 0
     for folder, url, file_part in parse_entries(os.environ.get("EXTRA_MODELS", "")):
         try:
-            job = resolve(folder, url, file_part)
+            job = resolve(folder, url, file_part, env_tokens())
         except Exception as e:  # report and continue with the next entry
             emit(f"[extra] RESOLVE FAILED {url[:80]}: {e}")
             failed += 1
