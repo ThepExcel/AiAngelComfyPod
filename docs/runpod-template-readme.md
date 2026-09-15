@@ -4,7 +4,9 @@ ComfyUI tuned for **MiniMax H3** video, **SCAIL-2** and **Krea 2**: fast restart
 presets, and a **Model list** panel that downloads a whole list of Civitai / Hugging Face links
 with one button.
 
-Full guide and source: https://github.com/ThepExcel/AiAngelComfyPod
+Step-by-step guide (Thai, with copy-ready MODELS values): https://www.thepexcel.com/aiangel-comfypod/
+
+Full reference and source: https://github.com/ThepExcel/AiAngelComfyPod
 
 ## Quick start
 
