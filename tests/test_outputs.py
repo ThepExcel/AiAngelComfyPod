@@ -201,6 +201,21 @@ def test_pull_syncs_skips_and_resumes(pod, tmp_path, capsys):
     assert not vid.with_name(vid.name + ".part").exists()
 
 
+def test_access_route_shows_boot_passwords(pod, tmp_path):
+    base, _ = pod
+    with urllib.request.urlopen(base + "/aiangel/access", timeout=10) as r:
+        before = json.load(r)
+    assert before["filebrowser"]["password"] is None and before["jupyter"]["token"] is None
+    secrets = tmp_path / ".secrets"  # DATA_DIR/.secrets, where start.sh writes them
+    secrets.mkdir(exist_ok=True)
+    (secrets / "filebrowser_password").write_text("fb-secret-123\n", encoding="utf-8")
+    (secrets / "jupyter_password").write_text("jp-token-456", encoding="utf-8")
+    with urllib.request.urlopen(base + "/aiangel/access", timeout=10) as r:
+        after = json.load(r)
+    assert after["filebrowser"] == {"port": 8080, "user": "admin", "password": "fb-secret-123"}
+    assert after["jupyter"] == {"port": 8888, "token": "jp-token-456"}
+
+
 def test_nsfw_kit_route_serves_the_list(pod):
     base, _ = pod
     with urllib.request.urlopen(base + "/aiangel/kit/nsfw", timeout=10) as r:

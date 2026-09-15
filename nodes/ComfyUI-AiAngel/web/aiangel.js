@@ -98,6 +98,43 @@ function render(container) {
     }));
   }
 
+  // FileBrowser / JupyterLab passwords, so nobody has to find them in the pod log
+  const accessBox = el("div", { style: { display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px",
+    borderTop: "1px solid var(--border-color, #444)", paddingTop: "10px" } });
+  function portUrl(port, path = "") {
+    const { protocol, host } = window.location;
+    const swapped = host.replace(/-8188\./, `-${port}.`);
+    return swapped === host ? "" : `${protocol}//${swapped}${path}`;
+  }
+  function secretRow(label, value, openUrl) {
+    const head = el("div", { style: { display: "flex", justifyContent: "space-between", gap: "8px" } }, el("b", {}, label));
+    if (openUrl) head.append(el("a", { href: openUrl, target: "_blank", rel: "noopener", style: { color: "inherit" } }, "Open ↗"));
+    if (!value) return el("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
+      head, el("div", { style: { opacity: 0.75 } }, "not generated yet"));
+    const field = el("input", { type: "password", readonly: "", value, style: { ...fieldStyle, flex: "1", minWidth: "0" } });
+    const show = el("button", { style: buttonStyle, onclick: () => {
+      field.type = field.type === "password" ? "text" : "password";
+      show.textContent = field.type === "password" ? "Show" : "Hide";
+    } }, "Show");
+    const copy = el("button", { style: buttonStyle, onclick: async () => {
+      try { await navigator.clipboard.writeText(value); } catch { field.type = "text"; field.select(); document.execCommand("copy"); }
+      copy.textContent = "Copied"; setTimeout(() => (copy.textContent = "Copy"), 1500);
+    } }, "Copy");
+    return el("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
+      head, el("div", { style: { display: "flex", gap: "6px" } }, field, show, copy));
+  }
+  async function loadAccess() {
+    let data;
+    try { data = await (await api.fetchApi("/aiangel/access")).json(); } catch { return; }
+    const token = data.jupyter.token;
+    accessBox.replaceChildren(
+      el("div", { style: { fontWeight: "600" } }, "Pod access"),
+      secretRow("FileBrowser :8080 · user admin", data.filebrowser.password, portUrl(8080)),
+      secretRow("JupyterLab :8888 · token", token, token ? portUrl(8888, `/lab?token=${encodeURIComponent(token)}`) : portUrl(8888)),
+      el("div", { style: { opacity: 0.7 } }, "Set FILEBROWSER_PASSWORD / JUPYTER_PASSWORD in the template overrides to choose your own."));
+  }
+  loadAccess();
+
   container.replaceChildren(el("div",
     { style: { display: "flex", flexDirection: "column", gap: "10px", padding: "12px" } },
     el("div", { style: { fontWeight: "600" } }, "Model list download"),
@@ -111,7 +148,7 @@ function render(container) {
       el("button", { style: buttonStyle, onclick: loadNsfwKit,
         title: "Adults 18+ only. Fills the list with the image's NSFW kit (H3 + Krea 2); press Download all after." },
         "Load NSFW kit (18+)")),
-    message, keyNote, jobs));
+    message, keyNote, jobs, accessBox));
 
   refresh();
   const timer = setInterval(() => (container.isConnected ? refresh() : clearInterval(timer)), 2000);

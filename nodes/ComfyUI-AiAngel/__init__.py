@@ -6,6 +6,7 @@ copy the pull script that syncs all new results to your computer.
 
 API (same origin as ComfyUI):
   GET  /aiangel/status        jobs with progress, which API keys are saved (masked)
+  GET  /aiangel/access        FileBrowser / JupyterLab passwords generated at boot (start.sh)
   POST /aiangel/keys          {"civitai": "...", "huggingface": "..."}; "" keeps, "-" clears
   POST /aiangel/download      {"text": "<pasted list>"} -> queued entries, or 400 with the bad line
   GET  /aiangel/outputs       output files, newest first: path, size, mtime, kind
@@ -111,6 +112,28 @@ async def status(request: web.Request) -> web.Response:
         jobs = [_job_view(j) for j in _jobs]
     keys = {site: _mask(_token(site)) for site in SITES}
     return web.json_response({"jobs": jobs, "keys": keys, "models_dir": str(_models_dir())})
+
+
+@routes.get("/aiangel/access")
+async def access(request: web.Request) -> web.Response:
+    """FileBrowser / JupyterLab passwords, shown in the panel so nobody has to dig through the pod
+    log (RunPod keeps only its tail). Anyone who can reach this ComfyUI can already run code on the
+    pod, so this exposes nothing new."""
+
+    def read(name: str) -> str | None:
+        f = SECRETS / name
+        return f.read_text(encoding="utf-8").strip() or None if f.exists() else None
+
+    return web.json_response(
+        {
+            "filebrowser": {
+                "port": 8080,
+                "user": "admin",
+                "password": read("filebrowser_password"),
+            },
+            "jupyter": {"port": 8888, "token": read("jupyter_password")},
+        }
+    )
 
 
 @routes.post("/aiangel/keys")
