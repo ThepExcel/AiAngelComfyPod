@@ -352,6 +352,36 @@ def test_logs_mask_secret_values(make_dashboard, tmp_path):
         assert e.code == 400
 
 
+def test_logs_strip_terminal_colors(make_dashboard):
+    """ComfyUI colors its log lines; on a real pod the browser showed '[32m[INFO][0m'."""
+    base, cfg = make_dashboard()
+    cfg.log_dir.mkdir(parents=True, exist_ok=True)
+    (cfg.log_dir / "boot.log").write_text(
+        "\x1b[32m[INFO]\x1b[0m Starting server\n\x1b[1m\x1b[33m[WARNING]\x1b[0m old api\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    status, body = get_json(base + "/api/logs?name=boot")
+    assert status == 200
+    assert body["lines"] == ["[INFO] Starting server", "[WARNING] old api"]
+
+
+def test_elastic_volume_reports_no_fake_free_space(monkeypatch, tmp_path):
+    """A RunPod Global volume reports 0 used of 1 PiB; showing '1048576 GB free' is wrong."""
+    cfg = server.Config.from_env(data_dir=tmp_path)
+    real = server.shutil.disk_usage
+
+    def fake(path):
+        if Path(path) == tmp_path:
+            return real(path)._replace(total=1 << 50, used=0, free=1 << 50)
+        return real(path)
+
+    monkeypatch.setattr(server.shutil, "disk_usage", fake)
+    disk = cfg.disk_usage()
+    assert disk["workspace"] == {"used": None, "total": None, "elastic": True}
+    assert disk["container"]["total"] > 0
+
+
 # ---------------------------------------------------------------------------
 # CSRF
 # ---------------------------------------------------------------------------

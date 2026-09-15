@@ -15,6 +15,9 @@ import zipfile
 from collections.abc import Iterator
 from pathlib import Path
 
+# ComfyUI ships this empty file in its output folder; it is not something the user generated
+COMFY_PLACEHOLDER = "_output_images_will_be_put_here"
+
 IMAGE = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 VIDEO = {".mp4", ".webm", ".mov", ".mkv", ".avi"}
 AUDIO = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
@@ -41,6 +44,8 @@ def list_outputs(root: Path) -> list[dict]:
     for path in root.rglob("*"):
         rel = path.relative_to(root)
         if any(part.startswith(".") for part in rel.parts) or not path.is_file():
+            continue
+        if rel.name == COMFY_PLACEHOLDER:
             continue
         st = path.stat()
         files.append(

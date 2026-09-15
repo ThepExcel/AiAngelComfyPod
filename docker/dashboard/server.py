@@ -15,6 +15,7 @@ import asyncio
 import importlib.util
 import json
 import os
+import re
 import shutil
 import signal
 import socket
@@ -32,6 +33,7 @@ from aiohttp import ClientSession, ClientTimeout, web
 
 SITES = ("civitai", "huggingface")
 ENV_TOKEN_NAMES = {"civitai": "CIVITAI_TOKEN", "huggingface": "HF_TOKEN"}
+ELASTIC_DISK_BYTES = 1 << 50  # 1 PiB: what an elastic (Global) volume reports as its size
 
 
 def _load_module(name: str, path: Path):
@@ -240,9 +242,13 @@ class Config:
         def one(path) -> dict:
             try:
                 u = shutil.disk_usage(path)
-                return {"used": u.used, "total": u.total}
             except OSError:
                 return {"used": None, "total": None}
+            # A RunPod Global volume (object storage) reports 0 used of 1 PiB: it has no fixed
+            # size, so "free space" would be a made-up number.
+            if u.total >= ELASTIC_DISK_BYTES:
+                return {"used": None, "total": None, "elastic": True}
+            return {"used": u.used, "total": u.total}
 
         return {"workspace": one(self.data_dir), "container": one("/")}
 
@@ -671,7 +677,12 @@ def _secret_values(secrets_dir: Path) -> list[str]:
     return values
 
 
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+
+
 def _mask_line(line: str, secrets: list[str]) -> str:
+    # ComfyUI and its nodes color their log lines; a browser would show the codes as "[32m"
+    line = ANSI_ESCAPE.sub("", line)
     for v in secrets:
         line = line.replace(v, "••••")
     return line

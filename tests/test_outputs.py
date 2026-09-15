@@ -73,6 +73,13 @@ def test_list_outputs_skips_hidden_and_labels_kind(tmp_path):
     assert files["empty.txt"]["kind"] == "other"
 
 
+def test_list_outputs_skips_comfyui_placeholder(tmp_path):
+    """ComfyUI's own empty marker file showed up on a real pod as the only 'output'."""
+    (tmp_path / "_output_images_will_be_put_here").write_bytes(b"")
+    (tmp_path / "clip.mp4").write_bytes(b"x")
+    assert [f["path"] for f in outputs.list_outputs(tmp_path)] == ["clip.mp4"]
+
+
 @pytest.mark.parametrize(
     "bad", ["../secret.txt", "video/../../x", "/etc/passwd", "missing.png", "."]
 )

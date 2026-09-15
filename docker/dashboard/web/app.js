@@ -122,7 +122,9 @@
     }
 
     const p = s.pod;
-    const ws = p.disk?.workspace, ct = p.disk?.container;
+    const sized = (d) => (d && d.total != null ? d : null);
+    const wsElastic = !!p.disk?.workspace?.elastic;
+    const ws = sized(p.disk?.workspace), ct = sized(p.disk?.container);
     const meter = (k, v, sub, fill, warn, color) =>
       el("div", { class: "meter", style: color ? `--c:${color}` : null },
         el("div", { class: "k", text: k }),
@@ -136,7 +138,8 @@
       meter("VRAM", p.vram_total_mb ? fmtBytes(p.vram_used_mb * 1024 ** 2) : "—",
         p.vram_total_mb ? "/ " + fmtBytes(p.vram_total_mb * 1024 ** 2) : "",
         p.vram_total_mb ? pct(p.vram_used_mb, p.vram_total_mb) : null, false, "var(--cyan)"),
-      meter("Volume /workspace", ws ? fmtBytes(ws.total - ws.used) : "—", ws ? "free" : "",
+      meter("Volume /workspace", ws ? fmtBytes(ws.total - ws.used) : wsElastic ? "Elastic" : "—",
+        ws ? "free" : wsElastic ? "grows as you store" : "",
         ws ? pct(ws.used, ws.total) : null, ws && ws.total - ws.used < 10 * GB, "var(--wait)"),
       meter("Container disk", ct ? fmtBytes(ct.total - ct.used) : "—", ct ? "free" : "",
         ct ? pct(ct.used, ct.total) : null, ct && ct.total - ct.used < 3 * GB, "var(--run)"),
