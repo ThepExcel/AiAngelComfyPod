@@ -19,6 +19,10 @@ TEXT_ENCODER = "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
 VIDEO_VAE = "minimax_h3_video_vae_fp16.safetensors"
 AUDIO_VAE = "minimax_h3_audio_vae_fp32.safetensors"
 TURBO_LORA = "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors"
+UPSCALE_MODEL = "minimax_h3_latent_upscaler_3d_bf16.safetensors"
+# Refine-pass sigmas from the author's r2v example workflow (its own SigmaShift(12)+turbo-lora
+# chain, which we do not replicate) — mirrored as instructed rather than invented.
+UPSCALE_REFINE_SIGMAS = "0.9035, 0.6316, 0.3158, 0.0000"
 # H3 only accepts frame counts on the 17k+5 grid at 24 fps
 LENGTH_EXPR = "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17"
 
@@ -86,6 +90,13 @@ TITLES = {
     "sample": "Sample",
     "decode": "Decode video",
     "decode_audio": "Decode audio",
+    "upscale_split": "Split AV latent for upscale",
+    "upscale": "H3 latent upscaler (3D)",
+    "upscale_join": "Rejoin upscaled AV latent",
+    "refine_sigmas": "Refine sigmas (upscale pass)",
+    "refine": "Refine sample (upscale pass)",
+    "refine_decode": "Decode video (upscaled)",
+    "refine_decode_audio": "Decode audio (upscaled)",
     "video": "Create video",
 }
 
@@ -176,6 +187,44 @@ def _sample(
     g["decode_audio"] = _node("VAEDecodeAudio", samples=["sample", 0], vae=["audio_vae", 0])
 
 
+def _upscale(g: dict, scale: float, model_name: str) -> None:
+    """After `_sample()`: split the AV latent, upscale the video half in latent space, rejoin
+    with the untouched audio half, and refine — same node sequence and wiring (incl. reusing the
+    same noise/sampler/guider) as the author's r2v example workflow's upscale branch; `scale`
+    picks `MinimaxH3LatentUpscaler3D`'s own "scale by multiplier" mode (its own default), since
+    the example's fixed megapixel target was tuned for its own much-lower base resolution.
+    `refine_sigmas` (UPSCALE_REFINE_SIGMAS) is the example's own literal 3-step schedule, mirrored
+    as-is rather than invented — it was authored for that example's SigmaShift+turbo-lora model
+    chain, which this builder does not use, so its fit here is unverified (see report)."""
+    g["upscale_split"] = _node("LTXVSeparateAVLatent", av_latent=["sample", 1])
+    g["upscale"] = _node(
+        "MinimaxH3LatentUpscaler3D",
+        latent=["upscale_split", 0],
+        model_name=model_name,
+        mode="scale by multiplier",
+        **{"mode.scale": float(scale)},
+        align=32,
+        enable_temporal_chunking=True,
+        force_unload=True,
+        device="cuda",
+        precision="bf16",
+    )
+    g["upscale_join"] = _node(
+        "LTXVConcatAVLatent", video_latent=["upscale", 0], audio_latent=["upscale_split", 1]
+    )
+    g["refine_sigmas"] = _node("ManualSigmas", sigmas=UPSCALE_REFINE_SIGMAS)
+    g["refine"] = _node(
+        "SamplerCustomAdvanced",
+        noise=["noise", 0],
+        guider=["guider", 0],
+        sampler=["sampler", 0],
+        sigmas=["refine_sigmas", 0],
+        latent_image=["upscale_join", 0],
+    )
+    g["refine_decode"] = _node("VAEDecode", samples=["refine", 1], vae=["vae", 0])
+    g["refine_decode_audio"] = _node("VAEDecodeAudio", samples=["refine", 1], vae=["audio_vae", 0])
+
+
 def _save(g: dict, images: list, audio: list, prefix: str) -> None:
     g["video"] = _node("CreateVideo", images=images, audio=audio, fps=24.0)
     g["save"] = _node(
@@ -205,12 +254,19 @@ def clip(
     scheduler: str = "simple",
     unet: str = UNET,
     ref_size: str = "match",
+    upscale: bool = False,
+    upscale_scale: float = 2.0,
+    upscale_model: str = UPSCALE_MODEL,
 ) -> dict:
     g: dict = {}
     model = _models(g, list(loras), attention, turbo, unet)
     _reference(g, prompt, refs, width, height, seconds, ref_size)
     _sample(g, model, ["r2v", 0], seed, steps, sampler, scheduler)
-    _save(g, ["decode", 0], ["decode_audio", 0], prefix)
+    if upscale:
+        _upscale(g, upscale_scale, upscale_model)
+        _save(g, ["refine_decode", 0], ["refine_decode_audio", 0], prefix)
+    else:
+        _save(g, ["decode", 0], ["decode_audio", 0], prefix)
     return _numbered(g)
 
 
