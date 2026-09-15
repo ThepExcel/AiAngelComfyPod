@@ -106,7 +106,8 @@ if [ "${AIANGEL_SERVERLESS:-0}" = 1 ]; then
     # shellcheck disable=SC2086
     python3.12 main.py --listen 127.0.0.1 --port 8188 ${COMFYUI_ARGS:-} &
     stamp "serverless worker: ComfyUI starting, handler waiting for jobs"
-    PYTHONPATH=/opt/aiangel/sls exec python3.12 /opt/aiangel/handler.py
+    export PYTHONPATH=/opt/aiangel/sls
+    exec python3.12 -u /opt/aiangel/handler.py
 fi
 
 # ---- access passwords: use the env value, otherwise generate one once and keep it on the volume
