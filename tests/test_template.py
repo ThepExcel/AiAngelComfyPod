@@ -6,10 +6,16 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 PRESETS = ROOT / "presets" / "models.tsv"
+def _tracked_files(subdir: str) -> list[Path]:
+    return sorted(
+        p for p in (ROOT / subdir).rglob("*") if p.is_file() and "__pycache__" not in p.parts
+    )
+
+
 IMAGE_FILES = [
     ROOT / "Dockerfile",
-    *sorted(p for p in (ROOT / "docker").iterdir() if p.is_file()),
-    *sorted(p for p in (ROOT / "nodes").rglob("*") if p.is_file() and "__pycache__" not in p.parts),
+    *_tracked_files("docker"),
+    *_tracked_files("nodes"),
     PRESETS,
 ]
 ALLOWED_HOSTS = {"huggingface.co"}
@@ -101,7 +107,9 @@ def test_h3_preset_holds_what_the_template_workflows_load():
 def test_no_secrets_or_private_paths_in_image_files():
     token_like = re.compile(r"(hf_[A-Za-z0-9]{20,}|rpa_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,})")
     for path in IMAGE_FILES:
-        text = path.read_text(encoding="utf-8")
+        # front-end assets under docker/dashboard/web/ may be binary (png, ...); decode with
+        # replacement so this stays a text-pattern scan instead of crashing on those.
+        text = path.read_bytes().decode("utf-8", errors="replace")
         assert not token_like.search(text), f"{path.name}: looks like an API token"
         assert "D:/" not in text and "C:\\" not in text, f"{path.name}: local Windows path"
 
@@ -185,3 +193,8 @@ def test_baked_custom_nodes_are_pinned():
 def test_shell_scripts_use_lf_line_endings():
     for path in (ROOT / "docker").glob("*.sh"):
         assert b"\r" not in path.read_bytes(), f"{path.name} has CRLF; bash in the container breaks"
+
+
+def test_dockerfile_exposes_the_dashboard_port():
+    text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert re.search(r"^EXPOSE .*\b8189\b", text, re.MULTILINE), "dashboard is not EXPOSEd"

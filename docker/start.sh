@@ -16,6 +16,12 @@ stamp() { echo "[aiangel $(date -u +%FT%TZ) +$(( $(date +%s) - BOOT_T0 ))s] $*";
 
 mkdir -p "$DATA_DIR" "$LOG_DIR" "$SECRETS" "$DATA_DIR/input" "$DATA_DIR/output" "$DATA_DIR/user" \
     "$DATA_DIR/custom_nodes" "$DATA_DIR/.cache/pip"
+# From here on, this script's own stdout+stderr also go to boot.log (still printed to the
+# container log too), so the dashboard's /api/logs?name=boot has something to show.
+# One file per boot (the previous boot kept as boot.prev.log): ComfyUI's progress bars would
+# otherwise grow it on the volume forever.
+[ -f "$LOG_DIR/boot.log" ] && mv -f "$LOG_DIR/boot.log" "$LOG_DIR/boot.prev.log"
+exec > >(tee "$LOG_DIR/boot.log") 2>&1
 chmod 700 "$SECRETS"
 export PIP_CACHE_DIR="$DATA_DIR/.cache/pip"
 [ -f "$CONSTRAINTS" ] && export PIP_CONSTRAINT="$CONSTRAINTS"
@@ -172,6 +178,17 @@ echo "  JupyterLab   :8888  token $JUPYTER_TOKEN"
 echo "  (stored in $SECRETS; set FILEBROWSER_PASSWORD / JUPYTER_PASSWORD to choose your own)"
 echo "================================================================"
 
+# ---- dashboard: starts before model downloads and ComfyUI, so it can show pod state and
+# download progress even while ComfyUI is not up yet.
+DASHBOARD_PORT="${DASHBOARD_PORT:-8189}"
+if [ -n "${RUNPOD_POD_ID:-}" ]; then
+    DASHBOARD_URL="https://${RUNPOD_POD_ID}-${DASHBOARD_PORT}.proxy.runpod.net/"
+else
+    DASHBOARD_URL="http://127.0.0.1:${DASHBOARD_PORT}/"
+fi
+nohup python3.12 /opt/aiangel/dashboard/server.py > "$LOG_DIR/dashboard.log" 2>&1 &
+stamp "dashboard starting: $DASHBOARD_URL (log: $LOG_DIR/dashboard.log)"
+
 # ---- model presets download in the background; ComfyUI does not wait for them
 # "nsfw" is not a models.tsv preset: it adds the Civitai list in /opt/aiangel/nsfw.txt to EXTRA_MODELS.
 case ",${MODELS// /}," in
@@ -215,6 +232,19 @@ if [ "$SHUTTING_DOWN" = 1 ]; then
     exit 0
 fi
 
-stamp "ComfyUI exited (code $COMFY_EXIT). FileBrowser and JupyterLab stay up for debugging."
-echo "  restart it with:  cd $COMFY && python3.12 main.py --listen 0.0.0.0 --port 8188 ${COMFYUI_ARGS:-}"
+# The dashboard's /api/comfy/restart kills and respawns ComfyUI itself (outside this script's
+# job control), which makes $COMFY_PID exit here too even though a fresh instance is already
+# running. Tell those two cases apart by a marker the dashboard writes right before it acts.
+RESTART_MARKER="$DATA_DIR/.dashboard-restarted-at"
+RESTART_AGE=9999
+if [ -f "$RESTART_MARKER" ]; then
+    RESTART_AGE=$(( $(date +%s) - $(cat "$RESTART_MARKER" 2>/dev/null || echo 0) ))
+fi
+if [ "$RESTART_AGE" -le 90 ]; then
+    stamp "ComfyUI was restarted via the dashboard; a new instance is running independently of this script."
+else
+    stamp "ComfyUI exited (code $COMFY_EXIT)."
+    echo "  restart it with:  cd $COMFY && python3.12 main.py --listen 0.0.0.0 --port 8188 ${COMFYUI_ARGS:-}"
+fi
+echo "  FileBrowser and JupyterLab stay up for debugging."
 sleep infinity

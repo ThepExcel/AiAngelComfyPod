@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard-static",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "python", "-m", "http.server", "8765", "--directory", "docker/dashboard/web"],
+      "port": 8765
+    },
+    {
+      "name": "dashboard-local",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "--with", "aiohttp", "python", "scripts/dashboard_local.py", "8190"],
+      "port": 8190
+    }
+  ]
+}

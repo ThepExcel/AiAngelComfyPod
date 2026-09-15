@@ -65,6 +65,7 @@ jobs:
           push: true
           build-args: |
             BASE_IMAGE=${{ matrix.base }}
+            GIT_SHA=${{ steps.tags.outputs.sha }}
           tags: |
             ${{ matrix.latest && format('{0}:latest', env.IMAGE) || '' }}
             ${{ env.IMAGE }}:cuda${{ matrix.cuda }}

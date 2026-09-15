@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Angel ComfyPod · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <img class="mark" src="logo-mark.png" alt="" width="37" height="28">
+    <span class="brand-name">AI Angel <b>ComfyPod</b></span>
+    <span class="pod-id mono" id="podId">—</span>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="overview" aria-selected="true">Overview <kbd>1</kbd></button>
+    <button role="tab" data-tab="models">Models <kbd>2</kbd></button>
+    <button role="tab" data-tab="outputs">Outputs <kbd>3</kbd></button>
+    <button role="tab" data-tab="keys">Keys <kbd>4</kbd></button>
+    <button role="tab" data-tab="logs">Logs <kbd>5</kbd></button>
+  </nav>
+  <a class="btn brand open-comfy" id="openComfyTop" target="_blank" rel="noopener">Open ComfyUI <span aria-hidden="true">↗</span></a>
+</header>
+
+<main>
+  <!-- OVERVIEW -->
+  <section class="tab" id="tab-overview">
+    <div class="hero">
+      <div class="hero-text">
+        <p class="eyebrow mono" id="heroEyebrow">COMFYUI · PORT 8188</p>
+        <h1 id="heroTitle">Checking ComfyUI…</h1>
+        <p class="sub" id="heroSub">This page works even while ComfyUI starts, so you can watch the boot here.</p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn brand big" id="openComfy" target="_blank" rel="noopener">Open ComfyUI <span aria-hidden="true">↗</span></a>
+        <button class="btn" id="restartComfy">Restart ComfyUI</button>
+      </div>
+    </div>
+
+    <div class="meters" id="meters"></div>
+
+    <div class="grid two">
+      <div class="card">
+        <div class="card-head"><h2>Services</h2><span class="hint">Passwords are generated at first boot and kept on your volume.</span></div>
+        <div id="services"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Models at boot</h2><button class="link" data-goto="models">Manage →</button></div>
+        <p class="mono small dim" id="modelsEnv"></p>
+        <div id="presetSummary"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Latest outputs</h2><button class="link" data-goto="outputs">All outputs →</button></div>
+      <div class="strip" id="latestOutputs"></div>
+    </div>
+  </section>
+
+  <!-- MODELS -->
+  <section class="tab" id="tab-models" hidden>
+    <div class="section-title">
+      <h1>Models</h1>
+      <p class="sub">Add a preset or paste links. Files already on the volume at full size are skipped.</p>
+    </div>
+    <div class="grid two wide-left">
+      <div class="card">
+        <div class="card-head"><h2>Presets</h2><span class="hint">From <span class="mono">MODELS</span> or added here, no restart needed</span></div>
+        <div id="presets"></div>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <div class="card-head"><h2>Paste links</h2></div>
+          <textarea id="linkText" rows="7" spellcheck="false" placeholder="https://civitai.com/models/12345?modelVersionId=67890&#10;loras https://huggingface.co/org/repo/resolve/main/file.safetensors&#10;&#10;One link per line. Put a folder name first to choose where it goes."></textarea>
+          <div class="row">
+            <button class="btn primary" id="queueLinks">Download</button>
+            <button class="btn ghost" id="loadNsfw" title="Adds the curated adult model list to the box">Load NSFW kit (18+)</button>
+          </div>
+          <p class="msg" id="linkMsg" role="status"></p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Downloads</h2><span class="hint" id="jobsHint"></span></div>
+          <div id="jobs"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OUTPUTS -->
+  <section class="tab" id="tab-outputs" hidden>
+    <div class="section-title">
+      <h1>Outputs</h1>
+      <p class="sub" id="outputsSub">Everything ComfyUI saved. Pick files, or take them all, as ZIP.</p>
+    </div>
+    <div class="toolbar card">
+      <div class="seg" id="kindFilter">
+        <button data-kind="all" aria-pressed="true">All</button>
+        <button data-kind="video">Video</button>
+        <button data-kind="image">Image</button>
+        <button data-kind="audio">Audio</button>
+      </div>
+      <button class="btn ghost" id="selectNew" title="Files saved after the newest file in your last ZIP from this browser">New since last ZIP</button>
+      <button class="btn ghost" id="selectAll">Select all</button>
+      <button class="btn ghost" id="selectNone">Clear</button>
+      <span class="sel mono" id="selInfo">0 selected</span>
+      <span class="spacer"></span>
+      <label class="split">Split
+        <select id="partSize">
+          <option value="0">one ZIP</option>
+          <option value="1">per 1 GB</option>
+          <option value="2" selected>per 2 GB</option>
+          <option value="4">per 4 GB</option>
+          <option value="count50">per 50 files</option>
+          <option value="count100">per 100 files</option>
+        </select>
+      </label>
+      <button class="btn primary" id="zipSelected">Download ZIP</button>
+    </div>
+    <div class="parts" id="parts" hidden></div>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <!-- KEYS -->
+  <section class="tab" id="tab-keys" hidden>
+    <div class="section-title">
+      <h1>API keys</h1>
+      <p class="sub">Saved on your own volume (<span class="mono">/workspace/aiangel/.secrets</span>), used only for downloads, shown masked. ComfyUI's Model list and Model Manager use the same keys.</p>
+    </div>
+    <div class="grid two">
+      <div class="card key-card" data-site="civitai">
+        <div class="card-head"><h2>Civitai</h2><span class="state-pill" data-for="civitai"></span></div>
+        <p class="small dim">Needed for every Civitai download. Civitai → Account settings → API Keys.</p>
+        <input type="password" autocomplete="off" spellcheck="false" placeholder="Paste Civitai API key">
+        <div class="row"><button class="btn primary save-key">Save</button><button class="btn ghost clear-key">Remove</button></div>
+      </div>
+      <div class="card key-card" data-site="huggingface">
+        <div class="card-head"><h2>Hugging Face</h2><span class="state-pill" data-for="huggingface"></span></div>
+        <p class="small dim">Only for gated or private repos. huggingface.co → Settings → Access Tokens (read).</p>
+        <input type="password" autocomplete="off" spellcheck="false" placeholder="Paste Hugging Face token">
+        <div class="row"><button class="btn primary save-key">Save</button><button class="btn ghost clear-key">Remove</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOGS -->
+  <section class="tab" id="tab-logs" hidden>
+    <div class="section-title row-between">
+      <h1>Logs</h1>
+      <div class="seg" id="logPick">
+        <button data-log="boot" aria-pressed="true">Boot</button>
+        <button data-log="models">Models</button>
+        <button data-log="comfyui">ComfyUI</button>
+      </div>
+    </div>
+    <pre class="log mono" id="logBox">Loading…</pre>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

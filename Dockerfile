@@ -186,6 +186,12 @@ RUN echo "AIANGEL_NODE=$(sha256sum /opt/comfyui/custom_nodes.baked/ComfyUI-AiAng
     && chmod +x /opt/aiangel/*.sh \
     && python3.12 -c "import torch, comfy_kitchen; print('torch', torch.__version__)"
 
+# Standalone status/control dashboard, port 8189 (docs/dashboard-api.md). docker/start.sh
+# starts it before ComfyUI. docker/dashboard/web/ (front end) is copied in when it exists.
+COPY docker/dashboard /opt/aiangel/dashboard
+ARG GIT_SHA=unknown
+RUN echo "$GIT_SHA" > /opt/aiangel/image-version
+
 ENV DATA_DIR=/workspace/aiangel \
     AIANGEL_SERVERLESS=0 \
     MODELS="" \
@@ -193,5 +199,5 @@ ENV DATA_DIR=/workspace/aiangel \
     COMFYUI_ARGS=""
 
 WORKDIR /opt/comfyui
-EXPOSE 8188 8080 8888 22
+EXPOSE 8188 8080 8888 8189 22
 ENTRYPOINT ["/opt/aiangel/start.sh"]
