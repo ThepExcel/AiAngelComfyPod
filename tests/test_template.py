@@ -145,6 +145,15 @@ def test_start_sh_node_sync_survives_global_volumes():
     assert 'ln -sfn "${node%/}" "$dest"' in text, "fallback: run the node from the image"
 
 
+def test_aiangel_node_version_covers_every_file():
+    """The node's bundle-version hash decides whether an existing volume re-syncs the node. A hash
+    of only *.py/*.js left renamed example workflows under their old names on a volume."""
+    lines = (ROOT / "Dockerfile").read_text(encoding="utf-8").splitlines()
+    line = next(ln for ln in lines if "AIANGEL_NODE=" in ln)
+    assert "find . -type f" in line, line
+    assert "*.py" not in line and "*.js" not in line, line
+
+
 def test_aiangelh3_example_workflows_load_the_merge():
     import json
 

@@ -181,7 +181,9 @@ COPY docker/handler.py docker/serverless_models.py /opt/aiangel/
 # Our own node: the "Model list" sidebar tab (paste links, download all), the boot downloader, and
 # the "Outputs" tab (ZIP download, pull.py sync).
 COPY nodes/ComfyUI-AiAngel /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel
-RUN echo "AIANGEL_NODE=$(sha256sum /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel/*.py /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel/web/*.js | sha256sum | cut -c1-12)" \
+# Hash every file of the node (example_workflows/*.json included): a change that only renames a
+# workflow must still re-sync the node onto an existing volume, or the old names stay there.
+RUN echo "AIANGEL_NODE=$(cd /opt/comfyui/custom_nodes.baked/ComfyUI-AiAngel && find . -type f -not -path '*/__pycache__/*' | LC_ALL=C sort | xargs -d '\n' sha256sum | sha256sum | cut -c1-12)" \
         >> /opt/comfyui/.runpod-bundle-version \
     && chmod +x /opt/aiangel/*.sh \
     && python3.12 -c "import torch, comfy_kitchen; print('torch', torch.__version__)"
