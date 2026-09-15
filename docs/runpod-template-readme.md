@@ -1,8 +1,8 @@
 # AI Angel ComfyPod
 
 ComfyUI tuned for **MiniMax H3** video, **SCAIL-2** and **Krea 2**: fast restarts, one-switch model
-presets, and a **Model list** panel that downloads a whole list of Civitai / Hugging Face links
-with one button.
+presets, and a **Dashboard** (port 8189) to watch the boot, add models, save your API keys and
+download your results as ZIP, without digging through logs.
 
 Step-by-step guide (Thai, with copy-ready MODELS values): https://www.thepexcel.com/aiangel-comfypod/
 
@@ -16,8 +16,9 @@ Full reference and source: https://github.com/ThepExcel/AiAngelComfyPod
    `ghcr.io/thepexcel/aiangelcomfypod:cuda12.8`.
 2. Keep the default `MODELS=h3core,h3upscaler,aiangelh3` (~42 GB: H3 text encoder + VAEs, the H3
    latent upscaler and the AiAngelH3 model), or change it with **Set overrides** (see below), and deploy.
-3. Open port **8188** (ComfyUI). The first boot downloads the models in the background; when
-   `/workspace/aiangel/logs/models.log` says `ALL PRESET MODELS READY`, press **R** in ComfyUI.
+3. In **Connect**, open **8189 Dashboard**. It shows the boot and each model's download progress,
+   and when ComfyUI is ready press **Open ComfyUI** there (models still downloading appear in
+   ComfyUI after you press **R**).
 4. Open **Templates → ComfyUI-AiAngel → AiAngelH3 - Clip** for a ready H3 workflow (with
    `MODELS=h3`, use **H3 Hybrid - Clip (MODELS=h3)** instead).
 
@@ -41,9 +42,20 @@ Files already on disk at the right size are skipped, so restarts download nothin
 
 | Port | Service |
 |---|---|
+| 8189 | Dashboard: status, models, outputs ZIP, API keys, logs, passwords for the two below |
 | 8188 | ComfyUI |
-| 8080 | FileBrowser (user `admin`, password printed in the pod log) |
-| 8888 | JupyterLab (password printed in the pod log) |
+| 8080 | FileBrowser (user `admin`, password on the Dashboard) |
+| 8888 | JupyterLab (token on the Dashboard) |
+
+## Dashboard (8189)
+
+- **Overview**: ComfyUI ready / starting / stopped with Open and Restart, GPU, VRAM, free disk,
+  FileBrowser and JupyterLab passwords, latest results.
+- **Models**: every preset with per-file progress; add one (e.g. `scail`, `krea2`) without a
+  restart; paste Civitai / Hugging Face links.
+- **Outputs**: pick results or take them all as ZIP, split into parts (per 1/2/4 GB or per 50/100
+  files), or only what is new since your last ZIP.
+- **Keys** for Civitai / Hugging Face, and **Logs** (boot, models, ComfyUI).
 
 ## In ComfyUI
 

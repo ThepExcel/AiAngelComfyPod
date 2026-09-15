@@ -21,6 +21,11 @@ supports this template.
 - **Model presets.** Set `MODELS=h3`, `scail`, `krea2` (or a comma list, or `all`) and the first
   boot downloads exactly those files. Files already on the volume at the right size are skipped,
   so later boots download nothing.
+- **Dashboard on port 8189** — a control page that is up before ComfyUI: pod and ComfyUI state
+  (open / restart), GPU, VRAM and disk, boot and per-file model progress, add a preset or paste
+  links without a restart, Civitai / Hugging Face keys, outputs as ZIP (selected, all, split into
+  parts by size or file count, or new since your last ZIP), boot / models / ComfyUI logs with
+  secrets masked, and the FileBrowser / JupyterLab passwords. API: `docs/dashboard-api.md`.
 - **Model list panel** — paste a whole list of links and download them all; see below.
 - **Outputs panel** — download new results as one ZIP in a click, or sync them all to your
   computer with `pull.py`.
@@ -43,12 +48,13 @@ supports this template.
    | `JUPYTER_PASSWORD` | | otherwise one is generated and printed in the pod log |
    | `PUBLIC_KEY` | `ssh-ed25519 ...` | enables SSH with your key |
 
-4. Open port **8188** for ComfyUI. Model downloads run in the background; the log is at
-   `/workspace/aiangel/logs/models.log`. When it says `ALL PRESET MODELS READY`, press **R** in
-   ComfyUI to refresh the model lists.
+4. Open port **8189** (Dashboard) and watch the boot there; press **Open ComfyUI** when it is
+   ready. Model downloads run in the background (log: `/workspace/aiangel/logs/models.log`); when
+   they finish, press **R** in ComfyUI to refresh the model lists.
 
 | Port | Service |
 |---|---|
+| 8189 | Dashboard |
 | 8188 | ComfyUI |
 | 8080 | FileBrowser (user `admin`) |
 | 8888 | JupyterLab |
