@@ -2,8 +2,9 @@
 
 Changes: the merge in the model loader, the turbo LoRA node bypassed (kept, so a user can turn it
 back on), euler / simple 8 steps (h3_workflows.AIANGEL), MODELS=h3core,aiangelh3 in titles and
-notes, its own save prefix. The result is loaded, run and re-saved from the real ComfyUI UI on a pod before
-it is committed, so the saved file is what the UI writes.
+notes, its own save prefix. The result is loaded, run and re-saved from the real ComfyUI UI on a
+pod before it is committed (scripts/save_example_workflow.py), so the saved file is what the UI
+writes.
 
 usage: uv run python scripts/make_aiangelh3_workflows.py OUT_DIR
 """
