@@ -190,12 +190,13 @@ Open ComfyUI's **Templates** browser → *ComfyUI-AiAngel*:
 - **AiAngelH3 - Clip** / **AiAngelH3 - Extend** — the same two workflows set up for the AiAngelH3
   merge (`MODELS=h3core,aiangelh3`, the RunPod template's default): turbo LoRA bypassed, euler /
   simple, 8 steps.
-- **AiAngel H3 - Clip** — reference-to-video from `<Picture 1>` and a structured prompt, 2-15 s.
-- **AiAngel H3 - Extend** — continues a previous H3 clip without a cut: its last 22 frames and
-  their sound anchor the new part, the overlap is cross-faded, and the saved video is previous +
-  new. Feed the result back in to keep going past 15 s.
+- **H3 Hybrid - Clip (MODELS=h3)** — reference-to-video from `<Picture 1>` and a structured
+  prompt, 2-15 s.
+- **H3 Hybrid - Extend (MODELS=h3)** — continues a previous H3 clip without a cut: its last 22
+  frames and their sound anchor the new part, the overlap is cross-faded, and the saved video is
+  previous + new. Feed the result back in to keep going past 15 s.
 
-The AiAngel H3 pair uses only ComfyUI core nodes, the `h3` preset, the 4-step turbo LoRA and Comfy Kitchen
+The H3 Hybrid pair uses only ComfyUI core nodes, the `h3` preset, the 4-step turbo LoRA and Comfy Kitchen
 attention. On an RTX PRO 6000 a 5 s 576×1024 clip takes about 42 s (46 s without Kitchen
 attention), a 15 s clip about 141 s, and extending a 5 s clip by 5 s about 62 s.
 

@@ -19,7 +19,7 @@ Full reference and source: https://github.com/ThepExcel/AiAngelComfyPod
 3. Open port **8188** (ComfyUI). The first boot downloads the models in the background; when
    `/workspace/aiangel/logs/models.log` says `ALL PRESET MODELS READY`, press **R** in ComfyUI.
 4. Open **Templates → ComfyUI-AiAngel → AiAngelH3 - Clip** for a ready H3 workflow (with
-   `MODELS=h3`, use **AiAngel H3 - Clip** instead).
+   `MODELS=h3`, use **H3 Hybrid - Clip (MODELS=h3)** instead).
 
 AiAngelH3 (https://huggingface.co/AiAngelGallery/AiAngelH3) is a merge of MiniMax H3 derivatives under
 the MiniMax H3 Community License: not licensed in the EU, UK, South Korea or the US; label published

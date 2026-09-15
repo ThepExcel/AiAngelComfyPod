@@ -25,7 +25,7 @@ spec.loader.exec_module(h3wf)
 A = h3wf.AIANGEL
 
 TEXT = [
-    ("## AiAngel H3 · ", "## AiAngelH3 · "),
+    ("## H3 Hybrid · ", "## AiAngelH3 · "),
     ("`MODELS=h3`", "`MODELS=h3core,aiangelh3`"),
     (
         "**Your LoRA:** add *LoraLoaderModelOnly* between *Turbo LoRA* and"
@@ -86,8 +86,12 @@ if __name__ == "__main__":
     out.mkdir(parents=True, exist_ok=True)
     timing = sys.argv[2] if len(sys.argv) > 2 else "Timing: not measured yet."
     for src, dst, prefix in (
-        ("AiAngel H3 - Clip.json", "AiAngelH3 - Clip.json", "AiAngel/aiangelh3"),
-        ("AiAngel H3 - Extend.json", "AiAngelH3 - Extend.json", "AiAngel/aiangelh3-extend"),
+        ("H3 Hybrid - Clip (MODELS=h3).json", "AiAngelH3 - Clip.json", "AiAngel/aiangelh3"),
+        (
+            "H3 Hybrid - Extend (MODELS=h3).json",
+            "AiAngelH3 - Extend.json",
+            "AiAngel/aiangelh3-extend",
+        ),
     ):
         wf = json.loads((SRC / src).read_text(encoding="utf-8"))
         text = json.dumps(convert(wf, prefix, timing), indent=1, ensure_ascii=False)
