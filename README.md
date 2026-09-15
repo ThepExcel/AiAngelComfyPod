@@ -30,7 +30,7 @@ Image: `ghcr.io/thepexcel/aiangelcomfypod:latest`
 
    | Variable | Example | Meaning |
    |---|---|---|
-   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 49 GB, `h3extra` ≈ 43 GB more, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `h3upscaler` ≈ 690 MB, `nsfw` = adult kit, see below) |
+   | `MODELS` | `h3,scail` | presets to download on boot (`h3` ≈ 44 GB, `h3core` ≈ 21 GB = only the H3 text encoder + VAEs, for your own H3 model, `h3extra` ≈ 49 GB more, `scail` ≈ 29 GB, `krea2` ≈ 19 GB, `h3upscaler` ≈ 690 MB, `nsfw` = adult kit, see below) |
    | `EXTRA_MODELS` | *(links, see below)* | any other Civitai / Hugging Face models to download on boot |
    | `CIVITAI_TOKEN` | *(your Civitai API key)* | needed for Civitai downloads; also fills Model Manager's key |
    | `HF_TOKEN` | *(your token)* | only needed for gated Hugging Face files; also fills Model Manager's key |
@@ -220,13 +220,15 @@ image (`custom_nodes.baked`):
 `MODELS=h3` now downloads a **hybrid fl2va+ref2va model** (`smhfacct/Minimax-H3-fl2va-ref2va-hybrid-models`,
 the *b25-49* variant) instead of the plain `ref2va` checkpoint: it keeps `fl2va`'s higher output
 quality while adding `ref2va`'s reference-conditioning pathway, so one model does both
-first/last-frame and reference-video generation. It comes with the fp16 video VAE that ComfyUI's
-built-in H3 templates ask for, the int8 video VAE (slower than fp16 on CUDA 12.8 in our tests —
-community workflows say it pays off on CUDA 13), and both the fl2v
-and ref2v 4-step turbo LoRAs. In ComfyUI's own H3 templates, pick the hybrid file in the
-diffusion model loader. `MODELS=h3extra` adds the *b20-49* variant (closer to `ref2va`, for
-stronger reference adherence), the 8-step fl2v turbo LoRA, the `taeh3` preview VAE, and the
-original plain `ref2va` checkpoint, for comparing.
+first/last-frame and reference-video generation. It comes with the H3 text encoder, the fp16
+video VAE that ComfyUI's built-in H3 templates ask for, the audio VAE and the ref2v 4-step turbo
+LoRA — exactly what the AiAngel workflows load. In ComfyUI's own H3 templates, pick the hybrid
+file in the diffusion model loader. Bringing your own H3 model (a Civitai merge, a turbo-merged
+checkpoint)? `MODELS=h3core` downloads only the text encoder and the two VAEs it needs.
+`MODELS=h3extra` adds the *b20-49* variant (closer to `ref2va`, for stronger reference
+adherence), the original plain `ref2va` checkpoint, the fl2v 4-step and 8-step turbo LoRAs, the
+int8 video VAE (slower than fp16 on CUDA 12.8 in our tests — community workflows say it pays off
+on CUDA 13) and the `taeh3` preview VAE, for comparing.
 
 Left out of the image: a neural latent-upscaler node (`Comfyui_Minimax_h3_latent_Upscaler`) from
 the same workflows — its GitHub repo ships no LICENSE file, so it can't be redistributed here.

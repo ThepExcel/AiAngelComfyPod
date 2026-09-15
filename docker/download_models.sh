@@ -12,17 +12,20 @@ T0=$(date +%s)
 
 stamp() { echo "[models $(date -u +%FT%TZ) +$(( $(date +%s) - T0 ))s] $*"; }
 
+# A row's first column may list several presets ("h3core,h3"): the row downloads when any is wanted.
 wanted() {
     [ "$WANT" = all ] && return 0
-    case ",${WANT// /}," in *",$1,"*) return 0 ;; esac
+    local p
+    for p in ${1//,/ }; do
+        case ",${WANT// /}," in *",$p,"*) return 0 ;; esac
+    done
     return 1
 }
 
-known=$(cut -f1 "$PRESETS" | sort -u | tr '\n' ' ')
+known=$(cut -f1 "$PRESETS" | tr ',' '\n' | sort -u | tr '\n' ' ')
 for p in ${WANT//,/ }; do
     [ "$p" = all ] && continue
-    awk -F'\t' -v p="$p" '$1 == p { found = 1 } END { exit !found }' "$PRESETS" \
-        || stamp "WARNING: unknown preset '$p' (known: $known)"
+    case " $known " in *" $p "*) ;; *) stamp "WARNING: unknown preset '$p' (known: $known)" ;; esac
 done
 
 rm -f "$MODELS_DIR/.aiangel-download-done" "$MODELS_DIR/.aiangel-download-failed"

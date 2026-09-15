@@ -1,5 +1,5 @@
 # NSFW kit (adults 18+ only). Enabled with MODELS=...,nsfw or the "Load NSFW kit" button in the Model list panel.
-# Needs the h3 and krea2 presets (text encoders + VAEs) and a Civitai API key (CIVITAI_TOKEN).
+# Needs the h3core (or h3) and krea2 presets (text encoders + VAEs) and a Civitai API key (CIVITAI_TOKEN).
 # MiniMax H3 video
 loras|https://civitai.red/models/2856467/mmh3-mystic-xxx?modelVersionId=3266628
 # 10Eros Max beta5 TURBO-hybrid int8: the author's recommended file (turbo merged in: no turbo LoRA,

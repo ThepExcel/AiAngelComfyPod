@@ -57,7 +57,7 @@ def test_presets_are_well_formed():
     assert rows
     seen = set()
     for n, preset, sub, name, size, url in rows:
-        assert re.fullmatch(r"[a-z0-9_]+", preset), f"line {n}: preset name {preset!r}"
+        assert re.fullmatch(r"[a-z0-9_]+(,[a-z0-9_]+)*", preset), f"line {n}: preset {preset!r}"
         assert sub in KNOWN_SUBDIRS, f"line {n}: unknown models subdir {sub!r}"
         assert size.isdigit() and int(size) > 0, f"line {n}: size {size!r}"
         parsed = urlparse(url)
@@ -67,9 +67,24 @@ def test_presets_are_well_formed():
         seen.add((sub, name))
 
 
+def preset_files(preset):
+    return {row[3] for row in preset_rows() if preset in row[1].split(",")}
+
+
 def test_presets_cover_both_video_models():
-    presets = {row[1] for row in preset_rows()}
-    assert {"h3", "scail"} <= presets
+    presets = {p for row in preset_rows() for p in row[1].split(",")}
+    assert {"h3", "h3core", "scail"} <= presets
+
+
+def test_h3_preset_holds_what_the_template_workflows_load():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("h3wf", ROOT / "scripts" / "h3_workflows.py")
+    h3wf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(h3wf)
+    core = {h3wf.TEXT_ENCODER, h3wf.VIDEO_VAE, h3wf.AUDIO_VAE}
+    assert preset_files("h3core") == core, "h3core = what any H3 diffusion model needs"
+    assert preset_files("h3") == core | {h3wf.UNET, h3wf.TURBO_LORA}
 
 
 def test_no_secrets_or_private_paths_in_image_files():
@@ -106,8 +121,7 @@ def test_start_sh_fetches_h3_upscaler_opt_in():
     text = (ROOT / "docker" / "start.sh").read_text(encoding="utf-8")
     assert ",h3upscaler,*)" in text
     assert "LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler" in text
-    presets = {row[1] for row in preset_rows()}
-    assert "h3upscaler" in presets
+    assert preset_files("h3upscaler")
 
 
 def test_h3_upscaler_node_is_never_baked():
