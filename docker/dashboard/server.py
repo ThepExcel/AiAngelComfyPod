@@ -244,8 +244,8 @@ class Config:
                 u = shutil.disk_usage(path)
             except OSError:
                 return {"used": None, "total": None}
-            # A RunPod Global volume (object storage) reports 0 used of 1 PiB: it has no fixed
-            # size, so "free space" would be a made-up number.
+            # RunPod reports 0 used of 1 PiB here on a Global volume and also on a pod with no
+            # volume at all (seen 2026-09-16), so "free space" would be a made-up number.
             if u.total >= ELASTIC_DISK_BYTES:
                 return {"used": None, "total": None, "elastic": True}
             return {"used": u.used, "total": u.total}
