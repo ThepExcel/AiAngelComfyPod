@@ -1,9 +1,10 @@
 # /// script
 # dependencies = ["requests"]
 # ///
-"""Wait for a newly deployed AI Angel pod: find the newest running pod from the template, then poll its dashboard until ComfyUI is ready and the boot models are present. Prints progress.
+"""Wait for a newly deployed AI Angel pod: find the newest running pod from the template, then
+poll its dashboard until ComfyUI is ready and the boot models are present. Prints progress.
 
-  uv run scripts/wait_pod_ready.py [--template kv4dk65aim] [--minutes 60]
+uv run scripts/wait_pod_ready.py [--template kv4dk65aim] [--minutes 60]
 """
 
 import argparse
